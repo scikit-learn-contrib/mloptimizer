@@ -17,13 +17,10 @@ mloptimizer example optimization of iris dataset comparing hyperparameter tuning
 import pandas as pd
 import numpy as np
 from time import time
-from functools import reduce
-import plotly
 
 from mloptimizer.domain.hyperspace import HyperparameterSpace, Hyperparam
-from mloptimizer.domain.evaluation import kfold_stratified_score
 from mloptimizer.application.reporting.plots import plotly_search_space
-from mloptimizer.interfaces import HyperparameterSpaceBuilder, GeneticSearch
+from mloptimizer.interfaces import GeneticSearch
 
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, cross_val_score, \
     StratifiedKFold
@@ -33,9 +30,6 @@ from xgboost import XGBClassifier
 
 from hyperopt import STATUS_OK, hp, tpe
 from hyperopt import Trials, fmin
-
-width = 1000
-height = 1000
 
 # %%
 # 1) Dataset Description
@@ -71,7 +65,7 @@ print(f"Dataset: {name}, X shape: {X.shape}, y shape: {y.shape}")
 
 # %%
 # 2) Genetic Search of XGBoost Algorithm
-# --------------------------------------------
+# ---------------------------------------
 # Genetic search optimization is performed using the mloptimizer library to fine-tune the hyperparameters of the XGBoost
 # algorithm.
 #
@@ -86,7 +80,7 @@ print(f"Dataset: {name}, X shape: {X.shape}, y shape: {y.shape}")
 #
 # Optimization Process:
 #
-# - Population Size: 10
+# - Population Size: 15
 # - Generations: 10
 # - Fitness Score: Balanced accuracy
 # - Evaluation Function: Stratified k-fold cross-validation with 5 folds
@@ -98,8 +92,25 @@ print(f"Dataset: {name}, X shape: {X.shape}, y shape: {y.shape}")
 #
 # - Provides a more exhaustive search compared to grid search and random search.
 # - Can be more efficient in finding optimal hyperparameters for the XGBoost algorithm.
+#
+# Genetic Algorithm Configuration
+# --------------------------------
+# The following parameters control the behavior of the genetic algorithm:
+#
+# - `population_size`: Number of individuals (hyperparameter configurations) in each generation.
+# - `generations`: Number of evolutionary iterations to perform.
+# - `n_elites`: Number of best individuals to preserve unchanged in the next generation (elitism).
+# - `tournsize`: Tournament size for selection (number of individuals competing in each tournament).
+# - `cxpb`: Probability of mating (crossover) two individuals (0.0 to 1.0).
+# - `mutpb`: Probability of mutating an individual (0.0 to 1.0).
+# - `indpb`: Independent probability of mutating each hyperparameter within an individual (0.0 to 1.0).
+# - `early_stopping`: Enable early stopping if fitness does not improve for a number of generations.
+# - `patience`: Number of generations to wait for improvement before stopping early.
+# - `min_delta`: Minimum change in fitness to be considered an improvement.
+# - `seed`: Random seed for reproducibility.
+# - `use_parallel`: Whether to use parallel evaluation of individuals.
 
-print(f"2) Genetic optimization of the algorithm XGBoost")
+print(f"2) Genetic Search optimization of XGBoost")
 
 fixed_hyperparams = {}
 evolvable_hyperparams = {
@@ -112,41 +123,44 @@ evolvable_hyperparams = {
 }
 hyperparameter_space = HyperparameterSpace(fixed_hyperparams, evolvable_hyperparams)
 
-population_size = 10
-generations = 10
+genetic_params = {
+    'generations': 15,
+    'population_size': 10,
+    'n_elites': 3,
+    'tournsize': 3,
+    'cxpb': 0.5,
+    'mutpb': 0.8,
+    'indpb': 0.2,
+    'early_stopping': True,
+    'patience': 6,
+    'min_delta': 0.005,
+    'seed': 0,
+    'use_parallel': False
+}
 
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
 opt = GeneticSearch(
     estimator_class=XGBClassifier,
     hyperparam_space=hyperparameter_space,
-    **{"generations": generations, "population_size": population_size},
-    #eval_function=kfold_stratified_score,
     cv=cv,
-    scoring="balanced_accuracy", seed=0,
-    use_parallel=False
+    scoring="balanced_accuracy",
+    **genetic_params
 )
-
 
 t0_gen = time()
-clf = opt.fit(X,y)  # Aprox 100 elements
+clf = opt.fit(X, y)
 t1_gen = time()
-print(f"Genetic optimization around {population_size * (generations + 1)} algorithm executions")
 execution_time_gen = round(t1_gen - t0_gen, 2)
-print(f"Time of the genetic optimization {execution_time_gen} s")
+print(f"Time of the Genetic Search optimization: {execution_time_gen} s")
 population_df = opt.populations_
-print(f"Genetic optimization {population_df.shape[0]} algorithm executions")
-df = population_df[list(hyperparameter_space.evolvable_hyperparams.keys()) + ['fitness']]
-fig_gen = plotly_search_space(df).update_layout(
-    autosize=True,
-    width=width,  # Adjust width as needed
-    height=height,  # Adjust height as needed
-    margin=dict(l=20, r=20, t=50, b=20)  # Adjust margins as needed
-)
-plotly.io.show(fig_gen)
+print(f"Genetic Search evaluated {population_df.shape[0]} configurations")
+population_df_filtered = population_df[list(hyperparameter_space.evolvable_hyperparams.keys()) + ['fitness']]
+fig_gen = plotly_search_space(population_df_filtered)
+# fig_gen.show(config={'responsive': True})  # Commented out for CLI execution
 
 # %%
 # 3) Grid Search Optimization for XGBoost
-# ---------------------------------------
+# ----------------------------------------
 # Grid Search optimization is performed using the GridSearchCV class from the scikit-learn library.
 #
 # Optimization Process:
@@ -170,8 +184,7 @@ plotly.io.show(fig_gen)
 # - Grid Search is computationally expensive, especially for large hyperparameter spaces.
 # - It may not be feasible for extensive parameter tuning due to its exhaustive nature.
 
-print(f"3) Grid Search of the algorithm Grid Search")
-
+print(f"3) Grid Search optimization of XGBoost")
 
 xgb = XGBClassifier()
 parameters = {
@@ -182,12 +195,10 @@ parameters = {
     'n_estimators': (300,),
     'subsample': (0.7, 0.8, 0.9)
 }
-gs_executions = reduce(lambda x, y: x * y, [len(parameters[k]) for k in parameters.keys()], 1)
-print(f"Grid Search optimization will run {gs_executions} algorithm executions")
 clf_gs = GridSearchCV(
     xgb,
     parameters,
-    cv=5,
+    cv=cv,
     scoring="balanced_accuracy",
 )
 
@@ -195,24 +206,17 @@ t0_gs = time()
 clf_gs.fit(X, y)
 t1_gs = time()
 execution_time_gs = round(t1_gs - t0_gs, 2)
-
-print(f"Time of the grid search {execution_time_gs} s")
+print(f"Time of the Grid Search optimization: {execution_time_gs} s")
 
 synth_population_gs = pd.DataFrame(clf_gs.cv_results_['params'])
 synth_population_gs['fitness'] = clf_gs.cv_results_['mean_test_score']
-fig_gs = plotly_search_space(synth_population_gs).update_layout(
-    autosize=True,
-    width=width,  # Adjust width as needed
-    height=height,  # Adjust height as needed
-    margin=dict(l=20, r=20, t=50, b=20)  # Adjust margins as needed
-)
-plotly.io.show(fig_gs)
-
-print(f"Grid Search optimization has run {synth_population_gs.shape[0]} algorithm executions")
+print(f"Grid Search evaluated {synth_population_gs.shape[0]} configurations")
+fig_gs = plotly_search_space(synth_population_gs)
+# fig_gs.show(config={'responsive': True})  # Commented out for CLI execution
 
 # %%
 # 4) Random Search Optimization for XGBoost
-# -----------------------------------------
+# ------------------------------------------
 # Random Search optimization is performed using the RandomizedSearchCV class from the scikit-learn library.
 #
 # Optimization Process:
@@ -236,7 +240,8 @@ print(f"Grid Search optimization has run {synth_population_gs.shape[0]} algorith
 # - Random Search is less computationally expensive than Grid Search, making it more feasible for larger search spaces.
 # - It is not as exhaustive as genetic optimization but can be more efficient in exploring the hyperparameter space compared to Grid Search.
 
-print(f"4) Random Search of the algorithm")
+print(f"4) Random Search optimization of XGBoost")
+
 distributions = {
     'colsample_bytree': np.linspace(0.3, 1, 10),
     'gamma': (0, 5, 20),
@@ -245,36 +250,30 @@ distributions = {
     'n_estimators': (100, 300, 500),
     'subsample': np.linspace(0.7, 0.9, 10)
 }
-rs_executions = reduce(lambda x, y: x * y, [len(distributions[k]) for k in distributions.keys()], 1)
-print(f"Random Search optimization could run {rs_executions} different algorithm executions")
 clf_rs = RandomizedSearchCV(
     xgb,
     distributions,
-    cv=5,
+    cv=cv,
     n_iter=110,
     random_state=0,
     scoring="balanced_accuracy"
 )
 
 t0_rs = time()
-search = clf_rs.fit(X, y)
+clf_rs.fit(X, y)
 t1_rs = time()
 execution_time_rs = round(t1_rs - t0_rs, 2)
-print(f"Time of the grid search {execution_time_rs} s")
+print(f"Time of the Random Search optimization: {execution_time_rs} s")
 
 synth_population_rs = pd.DataFrame(clf_rs.cv_results_['params'])
 synth_population_rs['fitness'] = clf_rs.cv_results_['mean_test_score']
-fig_rs = plotly_search_space(synth_population_rs).update_layout(
-    autosize=True,
-    width=width,  # Adjust width as needed
-    height=height,  # Adjust height as needed
-    margin=dict(l=20, r=20, t=50, b=20)  # Adjust margins as needed
-)
-print(f"Random Search optimization has run {synth_population_rs.shape[0]} algorithm executions")
-plotly.io.show(fig_rs)
+print(f"Random Search evaluated {synth_population_rs.shape[0]} configurations")
+fig_rs = plotly_search_space(synth_population_rs)
+# fig_rs.show(config={'responsive': True})  # Commented out for CLI execution
 
-# %% 5) Bayesian Optimization for XGBoost
-# ---------------------------------------
+# %%
+# 5) Bayesian Optimization for XGBoost
+# -------------------------------------
 # Bayesian Optimization is performed using the hyperopt library to optimize the hyperparameters of the XGBoost algorithm.
 #
 # Optimization Process:
@@ -299,7 +298,8 @@ plotly.io.show(fig_rs)
 # - It can provide better results with fewer evaluations compared to random search and grid search.
 # - The number of evaluations is a parameter that can be adjusted to balance the trade-off between performance and computational cost.
 
-print(f"5) Bayesian Optimization of the algorithm")
+print(f"5) Bayesian Optimization of XGBoost")
+
 bayesian_space = {
     'colsample_bytree': hp.uniform('colsample_by_tree', 0.3, 1.0),
     'gamma': hp.choice('gamma', np.arange(5, 50+1, dtype=int)),
@@ -309,80 +309,48 @@ bayesian_space = {
     'subsample': hp.uniform('subsample', 0.6, 1.0)
 }
 
+
 def objective_function(params):
     clf = XGBClassifier(**params)
-    score = cross_val_score(clf, X, y, cv=5, scoring="balanced_accuracy").mean()
+    score = cross_val_score(clf, X, y, cv=cv, scoring="balanced_accuracy").mean()
     return {'loss': -score, 'status': STATUS_OK}
+
 
 trials = Trials()
 num_eval = 110
 
-print(f"Bayesian Search optimization will run {num_eval} algorithm executions")
-
 t0_bay = time()
-best_param = fmin(objective_function, bayesian_space, algo=tpe.suggest, max_evals=num_eval, trials=trials)
+fmin(objective_function, bayesian_space, algo=tpe.suggest, max_evals=num_eval, trials=trials)
 t1_bay = time()
 execution_time_bay = round(t1_bay - t0_bay, 2)
-print(f"Time of the bayesian search {execution_time_bay} s")
-
+print(f"Time of the Bayesian Optimization: {execution_time_bay} s")
 
 # Extract parameters and scores from trials
 trials_dict = trials.trials
 params_list = [{k: v[0] for k, v in trial['misc']['vals'].items()} for trial in trials_dict]
 scores_list = [-trial['result']['loss'] for trial in trials_dict]
-# Convert parameters to DataFrame
 synth_population_bay = pd.DataFrame(params_list)
-# Add scores to DataFrame
 synth_population_bay['fitness'] = scores_list
-# Rename columns to match the parameter names
 synth_population_bay.columns = [col.replace('vals_', '') for col in synth_population_bay.columns]
-
-fig_bay = plotly_search_space(synth_population_bay).update_layout(
-    autosize=True,
-    width=width,  # Adjust width as needed
-    height=height,  # Adjust height as needed
-    margin=dict(l=20, r=20, t=50, b=20)  # Adjust margins as needed
-)
-print(f"Bayesian Search optimization has run {num_eval} algorithm executions")
-plotly.io.show(fig_bay)
-
-
+print(f"Bayesian Optimization evaluated {num_eval} configurations")
+fig_bay = plotly_search_space(synth_population_bay)
+# fig_bay.show(config={'responsive': True})  # Commented out for CLI execution
 
 # %%
 # Summary Table
 # -------------
 # The summary table below compares the optimization methods based on their best metric,
-# the time taken for optimization, and the number of evaluations performed:
+# the time taken for optimization, and the number of evaluations performed.
 #
+# Table Columns:
 #
-# Overview of Optimization Methods:
+# - **Method**: The optimization technique used (Genetic, Grid Search, Random Search, Bayesian).
+# - **Best Metric**: The highest balanced accuracy score achieved by each method.
+# - **Time**: The total execution time in seconds for the optimization process.
+# - **Evaluated**: The number of hyperparameter configurations evaluated.
 #
-# - **Genetic Optimization**:
-#
-#   - Achieved the highest metric (0.961004) with 110 evaluations.
-#   - Completed in the shortest time (25.87 seconds).
-#   - Utilizes evolutionary algorithms to perform the search in the hyperparameter space.
-#   - Efficient in finding optimal hyperparameters.
-#
-# - **Grid Search**:
-#
-#   - Achieved a best metric of 0.960000 with 108 evaluations.
-#   - Took the longest time to complete (69.11 seconds).
-#   - Performs an exhaustive search over a predefined grid of hyperparameters.
-#   - Computationally expensive, particularly for large search spaces.
-#
-# - **Random Search**:
-#
-#   - Achieved a best metric of 0.960000 with 110 evaluations.
-#   - Took less time than Grid Search (58.89 seconds).
-#   - Samples random combinations of hyperparameters from a predefined space.
-#   - Less computationally expensive than Grid Search and more efficient for large spaces.
-#
-# Conclusions:
-#
-# - Genetic Optimization provided the best performance in terms of both metric and time.
-# - Grid Search is the most computationally expensive method.
-# - Random Search is a good compromise between computational cost and performance.
+# This comparison allows you to assess the trade-offs between exploration efficiency,
+# computational cost, and final model performance for each optimization strategy.
 
 row_gen = {'Method': "Genetic",
            'Best Metric': float(population_df.sort_values(by="fitness", ascending=False)['fitness'].iloc[0]),
@@ -391,9 +359,103 @@ row_gs = {'Method': "Grid Search", 'Best Metric': clf_gs.best_score_,
           'Time': execution_time_gs, 'Evaluated': synth_population_gs.shape[0]}
 row_rs = {'Method': "Random Search", 'Best Metric': clf_rs.best_score_,
           'Time': execution_time_rs, 'Evaluated': synth_population_rs.shape[0]}
-row_bay = {'Method': "Bayesian Search",
+row_bay = {'Method': "Bayesian Optimization",
            'Best Metric': max(scores_list),
            'Time': execution_time_bay, 'Evaluated': num_eval}
 
-df = pd.DataFrame([row_gen, row_gs, row_rs, row_bay])
-df
+summary_df = pd.DataFrame([row_gen, row_gs, row_rs, row_bay])
+print(summary_df)
+
+# %%
+# Best Hyperparameters Comparison
+# --------------------------------
+# This table shows the best hyperparameters found by each optimization method along with
+# the achieved performance metric. Comparing these values helps understand:
+#
+# - **Performance vs Configuration**: How do hyperparameter choices relate to achieved scores?
+# - **Convergence**: Do different methods find similar hyperparameter values for similar scores?
+# - **Diversity**: Which hyperparameters vary the most across methods?
+# - **Optimization Behavior**: How do different search strategies explore the space?
+#
+# Table Columns:
+#
+# - **Method**: The optimization technique used
+# - **Best Metric**: The balanced accuracy score achieved with these hyperparameters
+# - **colsample_bytree**: Subsample ratio of columns when constructing each tree
+# - **gamma**: Minimum loss reduction required to make a further partition
+# - **learning_rate**: Step size shrinkage used in updates
+# - **max_depth**: Maximum depth of a tree
+# - **n_estimators**: Number of boosting rounds
+# - **subsample**: Subsample ratio of the training instances
+
+# Extract best hyperparameters from each method
+best_params_gen = opt.best_params_
+best_params_gs = clf_gs.best_params_
+best_params_rs = clf_rs.best_params_
+
+# For Bayesian optimization, find the trial with the best score
+best_trial_idx = np.argmax(scores_list)
+best_params_bay = params_list[best_trial_idx]
+
+# Extract best scores
+best_score_gen = float(population_df.sort_values(by="fitness", ascending=False)['fitness'].iloc[0])
+best_score_gs = clf_gs.best_score_
+best_score_rs = clf_rs.best_score_
+best_score_bay = max(scores_list)
+
+# Create comparison dataframe
+params_comparison = pd.DataFrame({
+    'Method': ['Genetic', 'Grid Search', 'Random Search', 'Bayesian Optimization'],
+    'Best Metric': [best_score_gen, best_score_gs, best_score_rs, best_score_bay],
+    'colsample_bytree': [
+        best_params_gen['colsample_bytree'],
+        best_params_gs['colsample_bytree'],
+        best_params_rs['colsample_bytree'],
+        best_params_bay['colsample_by_tree']
+    ],
+    'gamma': [
+        best_params_gen['gamma'],
+        best_params_gs['gamma'],
+        best_params_rs['gamma'],
+        best_params_bay['gamma']
+    ],
+    'learning_rate': [
+        best_params_gen['learning_rate'],
+        best_params_gs['learning_rate'],
+        best_params_rs['learning_rate'],
+        best_params_bay['learning_rate']
+    ],
+    'max_depth': [
+        best_params_gen['max_depth'],
+        best_params_gs['max_depth'],
+        best_params_rs['max_depth'],
+        best_params_bay['max_depth']
+    ],
+    'n_estimators': [
+        best_params_gen['n_estimators'],
+        best_params_gs['n_estimators'],
+        best_params_rs['n_estimators'],
+        best_params_bay['n_estimators']
+    ],
+    'subsample': [
+        best_params_gen['subsample'],
+        best_params_gs['subsample'],
+        best_params_rs['subsample'],
+        best_params_bay['subsample']
+    ]
+})
+
+print("\nBest Hyperparameters Found by Each Method:")
+print(params_comparison.to_string(index=False))
+
+# %%
+# Combined Summary
+# ----------------
+# This final table combines both the performance metrics and the best hyperparameters
+# found by each optimization method for a comprehensive comparison.
+
+combined_summary = summary_df.copy()
+for param in ['colsample_bytree', 'gamma', 'learning_rate', 'max_depth', 'n_estimators', 'subsample']:
+    combined_summary[param] = params_comparison[param]
+
+combined_summary
