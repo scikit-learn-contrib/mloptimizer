@@ -8,6 +8,7 @@ from mloptimizer.domain.evaluation import train_score
 from mloptimizer.domain.hyperspace import HyperparameterSpace
 from mloptimizer.infrastructure.tracking import Tracker
 from mloptimizer.domain.evaluation import Evaluator
+from mloptimizer.__main__ import get_version
 
 
 
@@ -305,7 +306,7 @@ class Optimizer:
             # Set comprehensive tags (Phase 1 MLflow improvement)
             tags = {
                 'estimator_class': self.estimator_class.__name__,
-                'mloptimizer_version': '0.9.4',  # TODO: Get from package
+                'mloptimizer_version': get_version(),
                 'optimization_algorithm': 'genetic_algorithm',
             }
             self.tracker.set_optimization_tags(tags)
