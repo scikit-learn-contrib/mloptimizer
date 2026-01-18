@@ -1,0 +1,28 @@
+{
+    "fixed_hyperparams": {
+        "max_iter": 1000
+    },
+    "evolvable_hyperparams": {
+        "C": {
+            "name": "C",
+            "min_value": 1,
+            "max_value": 1000,
+            "hyperparam_type": "float",
+            "scale": 100
+        },
+        "penalty": {
+            "name": "penalty",
+            "min_value": 0,
+            "max_value": 1,
+            "hyperparam_type": "list",
+            "values_str": ["l1", "l2"]
+        },
+        "solver": {
+            "name": "solver",
+            "min_value": 0,
+            "max_value": 1,
+            "hyperparam_type": "list",
+            "values_str": ["liblinear", "saga"]
+        }
+    }
+}

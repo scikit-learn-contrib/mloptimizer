@@ -1,0 +1,20 @@
+{
+    "fixed_hyperparams": {
+        "algorithm": "SAMME"
+    },
+    "evolvable_hyperparams": {
+        "n_estimators": {
+            "name": "n_estimators",
+            "min_value": 10,
+            "max_value": 200,
+            "hyperparam_type": "int"
+        },
+        "learning_rate": {
+            "name": "learning_rate",
+            "min_value": 1,
+            "max_value": 200,
+            "hyperparam_type": "float",
+            "scale": 100
+        }
+    }
+}

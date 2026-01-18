@@ -1,0 +1,44 @@
+{
+    "fixed_hyperparams": {
+    },
+    "evolvable_hyperparams": {
+        "learning_rate": {
+            "name": "learning_rate",
+            "min_value": 1,
+            "max_value": 100,
+            "hyperparam_type": "float",
+            "scale": 1000
+        },
+        "max_depth": {
+            "name": "max_depth",
+            "min_value": 2,
+            "max_value": 15,
+            "hyperparam_type": "int"
+        },
+        "max_iter": {
+            "name": "max_iter",
+            "min_value": 50,
+            "max_value": 500,
+            "hyperparam_type": "int"
+        },
+        "max_leaf_nodes": {
+            "name": "max_leaf_nodes",
+            "min_value": 20,
+            "max_value": 100,
+            "hyperparam_type": "int"
+        },
+        "min_samples_leaf": {
+            "name": "min_samples_leaf",
+            "min_value": 10,
+            "max_value": 50,
+            "hyperparam_type": "int"
+        },
+        "l2_regularization": {
+            "name": "l2_regularization",
+            "min_value": 0,
+            "max_value": 10,
+            "hyperparam_type": "float",
+            "scale": 10
+        }
+    }
+}

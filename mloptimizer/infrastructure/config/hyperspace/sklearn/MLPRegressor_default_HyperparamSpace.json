@@ -1,0 +1,29 @@
+{
+    "fixed_hyperparams": {
+        "max_iter": 500,
+        "hidden_layer_sizes": [100]
+    },
+    "evolvable_hyperparams": {
+        "alpha": {
+            "name": "alpha",
+            "min_value": 1,
+            "max_value": 1000,
+            "hyperparam_type": "float",
+            "scale": 10000
+        },
+        "learning_rate_init": {
+            "name": "learning_rate_init",
+            "min_value": 1,
+            "max_value": 100,
+            "hyperparam_type": "float",
+            "scale": 10000
+        },
+        "activation": {
+            "name": "activation",
+            "min_value": 0,
+            "max_value": 2,
+            "hyperparam_type": "list",
+            "values_str": ["relu", "tanh", "identity"]
+        }
+    }
+}

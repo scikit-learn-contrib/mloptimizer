@@ -1,0 +1,28 @@
+{
+    "fixed_hyperparams": {
+        "max_iter": 2000
+    },
+    "evolvable_hyperparams": {
+        "alpha": {
+            "name": "alpha",
+            "min_value": 1,
+            "max_value": 1000,
+            "hyperparam_type": "float",
+            "scale": 10000
+        },
+        "l1_ratio": {
+            "name": "l1_ratio",
+            "min_value": 0,
+            "max_value": 1000,
+            "hyperparam_type": "float",
+            "scale": 1000
+        },
+        "selection": {
+            "name": "selection",
+            "min_value": 0,
+            "max_value": 1,
+            "hyperparam_type": "list",
+            "values_str": ["cyclic", "random"]
+        }
+    }
+}
