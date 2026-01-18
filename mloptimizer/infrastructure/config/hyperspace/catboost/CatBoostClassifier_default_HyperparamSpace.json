@@ -3,7 +3,8 @@
       "auto_class_weights": "Balanced",
       "bootstrap_type": "Bernoulli",
       "allow_writing_files": false,
-      "verbose": false
+      "verbose": false,
+      "thread_count": 1
     },
     "evolvable_hyperparams": {
         "learning_rate": {

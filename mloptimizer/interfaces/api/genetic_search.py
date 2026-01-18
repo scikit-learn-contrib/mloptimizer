@@ -43,7 +43,7 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
     scoring : str or callable, optional (default=None)
         Scoring method to evaluate the estimator's performance. If None, the estimator’s default score method is used.
 
-    use_parallel : bool, optional (default=False)
+    use_parallel : bool, optional (default=True)
         Whether to run the optimization in parallel. If True, parallel processing is enabled.
 
     cv : int, sklearn.model_selection.BaseCrossValidator, or None
@@ -56,7 +56,7 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
     use_mlflow : bool, optional (default=False)
         If True, the optimization process will be tracked using MLFlow. Default is False.
 
-    disable_file_output : bool, optional (default=False)
+    disable_file_output : bool, optional (default=True)
         If True, disables all file and directory creation during optimization. This includes:
         - Log files, checkpoint files, progress files
         - Result CSVs (logbook, populations)
@@ -129,8 +129,8 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
     _required_parameters = ["estimator_class"]
 
     def __init__(self, estimator_class, hyperparam_space, eval_function: callable = None,
-                 seed=None, scoring=None, use_parallel=False,
-                 cv=None, use_mlflow=False, disable_file_output=False,
+                 seed=None, scoring=None, use_parallel=True,
+                 cv=None, use_mlflow=False, disable_file_output=True,
                  early_stopping=False, patience=5, min_delta=0.01,
                  generations=20, population_size=20, cxpb=0.5, mutpb=0.8,
                  n_elites=3, tournsize=3, indpb=0.2,

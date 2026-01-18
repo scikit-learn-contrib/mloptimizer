@@ -92,8 +92,10 @@ def test_catboost_hyperparameters(hyperparam_space_catboost):
     assert "bootstrap_type" in fixed_params
     assert "allow_writing_files" in fixed_params
     assert "verbose" in fixed_params
+    assert "thread_count" in fixed_params
     assert fixed_params["allow_writing_files"] is False
     assert fixed_params["verbose"] is False
+    assert fixed_params["thread_count"] == 1
 
 
 def test_load_default_catboost_space():
@@ -102,4 +104,4 @@ def test_load_default_catboost_space():
 
     assert space is not None
     assert len(space.evolvable_hyperparams) == 7  # Should have 7 evolvable parameters
-    assert len(space.fixed_hyperparams) == 4  # Should have 4 fixed parameters
+    assert len(space.fixed_hyperparams) == 5  # Should have 5 fixed parameters (including thread_count)

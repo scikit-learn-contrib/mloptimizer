@@ -126,11 +126,38 @@ class GeneticAlgorithm:
 
         if self.use_parallel:
             try:
-                import multiprocessing
-                pool = multiprocessing.Pool()
-                self.toolbox.register("map", pool.map)
+                from joblib import Parallel, delayed
+
+                def joblib_map(func, iterable):
+                    """
+                    Wrapper to make joblib.Parallel compatible with DEAP's toolbox.map.
+                    Uses loky backend which can handle closures and complex objects.
+
+                    Parameters
+                    ----------
+                    func : callable
+                        Function to apply to each item
+                    iterable : iterable
+                        Items to process
+
+                    Returns
+                    -------
+                    list
+                        Results from applying func to each item
+                    """
+                    # Use loky backend for better pickling support (can handle closures)
+                    # n_jobs=-1 uses all available CPU cores
+                    # verbose=0 suppresses joblib progress messages
+                    return Parallel(n_jobs=-1, backend='loky', verbose=0)(
+                        delayed(func)(item) for item in iterable
+                    )
+
+                self.toolbox.register("map", joblib_map)
+                if self.tracker:
+                    self.tracker.info("Parallelization enabled using joblib with loky backend")
             except ImportError:
-                print("Multiprocessing not available.")
+                print("joblib not available, falling back to sequential execution")
+                self.use_parallel = False
 
         self.toolbox.register("individual",
                               IndividualUtils(hyperparam_space=self.hyperparam_space,

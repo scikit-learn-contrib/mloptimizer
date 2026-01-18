@@ -59,7 +59,7 @@ def test_checkpoints():
     mlopt = Optimizer(estimator_class=XGBClassifier,
                       hyperparam_space=HyperparameterSpace.get_default_hyperparameter_space(XGBClassifier),
                       genetic_params={"population_size": 5, "generations": 5},
-                      features=x, labels=y)
+                      features=x, labels=y, disable_file_output=False)
     clf = mlopt.optimize_clf(5, 5)
 
     mlopt2 = Optimizer(estimator_class=XGBClassifier,
