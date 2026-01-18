@@ -131,6 +131,24 @@ Setting the same `seed` value across multiple runs will produce identical result
 
    On macOS with newer processor architectures (e.g., M1 or M2 chips), users may experience occasional reproducibility issues due to hardware-related differences in random number generation and floating-point calculations. To ensure consistency across runs, we recommend running `mloptimizer` within a Docker container configured for reproducible behavior. This approach helps isolate the environment and improves reproducibility on macOS hardware.
 
+Logging and Verbosity
+---------------------
+
+By default, `mloptimizer` runs silently without logging output. To enable logging, use the ``verbose`` parameter:
+
+.. code-block:: python
+
+    # Silent (default)
+    opt = GeneticSearch(..., verbose=0)
+
+    # Info level - shows optimization lifecycle
+    opt = GeneticSearch(..., verbose=1)
+
+    # Debug level - shows detailed info
+    opt = GeneticSearch(..., verbose=2)
+
+For more advanced logging configuration, see the :doc:`../Advanced/logging` section.
+
 MLflow Integration Example
 ------------------------------
 

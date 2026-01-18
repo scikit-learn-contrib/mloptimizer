@@ -1,3 +1,4 @@
+import logging
 import warnings
 from mloptimizer.domain.evaluation import train_score
 from mloptimizer.application import OptimizerService, HyperparameterSpaceService
@@ -106,6 +107,12 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
         If True, include an individual representing sklearn defaults in the initial population.
         This helps the GA start from a known good configuration.
 
+    verbose : int, optional (default=0)
+        Controls the verbosity of logging output:
+        - 0: Silent (no logging output)
+        - 1: Info level (optimization start/end, generation summaries)
+        - 2: Debug level (detailed evaluation info, internal state)
+
     Attributes
     ----------
     best_estimator_ : estimator
@@ -134,8 +141,11 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
                  early_stopping=False, patience=5, min_delta=0.01,
                  generations=20, population_size=20, cxpb=0.5, mutpb=0.8,
                  n_elites=3, tournsize=3, indpb=0.2,
-                 initial_params=None, include_default=True):
+                 initial_params=None, include_default=True, verbose=0):
         """Initialize the GeneticOptimizer with the necessary components."""
+        # Configure logging based on verbose level
+        self.verbose = verbose
+        self._configure_logging()
         # Set the genetic algorithm parameters
         # If hyperparam_space not provided, use default for the estimator_class
         if hyperparam_space is None:
@@ -302,6 +312,27 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
         # Issue warnings
         for warning in warnings_list:
             warnings.warn(warning, UserWarning, stacklevel=3)
+
+    def _configure_logging(self):
+        """Configure logging based on verbose level.
+
+        - verbose=0: Silent (NullHandler only, no output)
+        - verbose=1: INFO level (optimization lifecycle, generation summaries)
+        - verbose=2: DEBUG level (detailed evaluation info)
+        """
+        if self.verbose > 0:
+            logger = logging.getLogger("mloptimizer")
+            level = logging.DEBUG if self.verbose > 1 else logging.INFO
+
+            logger.setLevel(level)
+
+            # Only add handler if one doesn't already exist
+            if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+                handler = logging.StreamHandler()
+                handler.setFormatter(
+                    logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s")
+                )
+                logger.addHandler(handler)
 
     def fit(self, X, y):
         """
@@ -525,6 +556,7 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
             "min_delta": self.min_delta,
             "initial_params": self.initial_params,
             "include_default": self.include_default,
+            "verbose": self.verbose,
             ** self.get_genetic_params()
         }
 
@@ -602,7 +634,8 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
             'tournsize': self.tournsize,
             'indpb': self.indpb,
             'initial_params': self.initial_params,
-            'include_default': self.include_default
+            'include_default': self.include_default,
+            'verbose': self.verbose
         }
 
         # Remove None values to reduce pickle size
