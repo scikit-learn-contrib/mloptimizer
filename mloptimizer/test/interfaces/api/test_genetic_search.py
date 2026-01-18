@@ -39,7 +39,7 @@ def hyperparam_space_svc():
     """Fixture to create a hyperparameter space for SVC."""
     builder = HyperparameterSpaceBuilder()
     hyperspace_svc = (builder.add_float_param("C", 1, 1000)
-                      .add_float_param("gamma", 100, 10000)
+                      .add_categorical_param("gamma", ["scale", "auto", 0.001, 0.01, 0.1, 1, 10])
                       .add_categorical_param("kernel", ["linear", "rbf", "poly"])
                       .build())
     return hyperspace_svc

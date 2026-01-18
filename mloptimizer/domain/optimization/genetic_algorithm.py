@@ -1,5 +1,6 @@
 import random
 import os
+import copy
 import joblib
 import numpy as np
 import pandas as pd
@@ -13,10 +14,51 @@ from mloptimizer.infrastructure.tracking import Tracker
 from mloptimizer.domain.evaluation import Evaluator
 from mloptimizer.domain.population import IndividualUtils
 
+def mutGaussianInt(individual, low, up, indpb, sigma=0.3):
+    """
+    Gaussian mutation for integer-encoded individuals with bounds.
+
+    Unlike mutUniformInt (which does random replacement), this mutation
+    makes perturbations around the current value. Uses Gaussian distribution
+    so small changes are more likely but large jumps are still possible.
+
+    Parameters
+    ----------
+    individual : list
+        The individual to mutate
+    low : list
+        Lower bounds for each gene
+    up : list
+        Upper bounds for each gene
+    indpb : float
+        Probability of mutating each gene
+    sigma : float
+        Standard deviation as fraction of range (default 0.3 = 30% of range)
+
+    Returns
+    -------
+    tuple
+        A tuple containing the mutated individual
+    """
+    for i, (xl, xu) in enumerate(zip(low, up)):
+        if random.random() < indpb:
+            range_size = xu - xl
+            if range_size <= 0:
+                continue
+            # Gaussian perturbation: small changes more likely, large still possible
+            delta = int(round(random.gauss(0, sigma * range_size)))
+            # Ensure at least some change when mutation occurs
+            if delta == 0:
+                delta = random.choice([-1, 1])
+            new_val = individual[i] + delta
+            # Clamp to bounds
+            individual[i] = max(xl, min(xu, new_val))
+    return individual,
 
 class GeneticAlgorithm:
     def __init__(self, hyperparam_space: HyperparameterSpace = None, tracker: Tracker = None,
-                 seed=None, evaluator: Evaluator=None, use_parallel=False, maximize=True):
+                 seed=None, evaluator: Evaluator=None, use_parallel=False, maximize=True,
+                 estimator_class=None):
         """
         Class to run the genetic algorithm (combined functionality from DeapOptimizer and GeneticAlgorithmRunner)
 
@@ -34,6 +76,8 @@ class GeneticAlgorithm:
             Flag for parallel processing
         maximize : bool
             Whether to maximize or minimize the objective function
+        estimator_class : class
+            The estimator class being optimized (used for default individual seeding)
         """
         self.hyperparam_space = hyperparam_space
         self.tracker = tracker
@@ -41,6 +85,7 @@ class GeneticAlgorithm:
         self.use_parallel = use_parallel
         self.maximize = maximize
         self.seed = seed
+        self.estimator_class = estimator_class
         random.seed(seed)
         np.random.seed(seed)
         self.populations = []
@@ -92,6 +137,7 @@ class GeneticAlgorithm:
                                               mlopt_seed=self.seed).init_individual,creator.Individual)
         self.toolbox.register("population", tools.initRepeat, list, self.toolbox.individual)
         self.toolbox.register("evaluate", self.evaluator.evaluate_individual)
+        self.toolbox.register("clone", copy.deepcopy)
 
     def simple_run(self, population_size: int, n_generations: int, cxpb: float = 0.5, mutation_prob: float = 0.5,
                    n_elites: int = 10, tournsize: int = 3, indpb: float = 0.05):
@@ -103,14 +149,55 @@ class GeneticAlgorithm:
                                        ngen=n_generations, stats=self.stats, halloffame=hof, verbose=True)
         return population, logbook, hof
 
-    def _pre_run(self, indpb: float = 0.5, n_elites: int = 10, population_size: int = 10, tournsize: int = 4):
+    def _pre_run(self, indpb: float = 0.5, n_elites: int = 10, population_size: int = 10, tournsize: int = 4,
+                  initial_params: list = None, include_default: bool = False):
         """
         Initialize the population and hall of fame (from GeneticAlgorithmRunner)
+
+        Parameters
+        ----------
+        indpb : float
+            Independent probability for each attribute to be mutated
+        n_elites : int
+            Number of elites in hall of fame
+        population_size : int
+            Size of the population
+        tournsize : int
+            Tournament size for selection
+        initial_params : list of dict, optional
+            List of hyperparameter dictionaries to seed the population with
+        include_default : bool, optional
+            If True, include an individual representing sklearn defaults
         """
-        pop = self.toolbox.population(n=population_size)
+        # Create initial individuals from user-provided params and/or defaults
+        seed_individuals = []
+        individual_utils = IndividualUtils(hyperparam_space=self.hyperparam_space, mlopt_seed=self.seed)
+
+        # Add default individual if requested
+        if include_default and self.estimator_class is not None:
+            default_ind = individual_utils.get_default_individual(
+                self.estimator_class, pcls=creator.Individual
+            )
+            seed_individuals.append(default_ind)
+
+        # Add user-provided initial params
+        if initial_params:
+            for params in initial_params:
+                ind = individual_utils.params_to_individual(params, pcls=creator.Individual)
+                seed_individuals.append(ind)
+
+        # Create remaining random individuals
+        n_random = max(0, population_size - len(seed_individuals))
+        pop = self.toolbox.population(n=n_random)
+
+        # Combine seeded and random individuals
+        pop = seed_individuals + pop
+
         hof = tools.HallOfFame(n_elites)
         self.toolbox.register("mate", tools.cxTwoPoint)
-        self.toolbox.register("mutate", tools.mutUniformInt,
+        # Use Gaussian mutation (small perturbations) instead of Uniform (random replacement)
+        # This allows fine-tuning good solutions while still enabling exploration
+        self.toolbox.register("mutate", mutGaussianInt,
                               low=[x.min_value for x in self.hyperparam_space.evolvable_hyperparams.values()],
                               up=[x.max_value for x in self.hyperparam_space.evolvable_hyperparams.values()],
                               indpb=indpb)
@@ -129,14 +216,15 @@ class GeneticAlgorithm:
         hyperparam_names.append("fitness")
         population_df = self.population_2_df()
         df = population_df[hyperparam_names]
-        g = plotly_search_space(df)
+        # Use lower resolution (40) for smaller HTML files (~500KB vs 4MB)
+        g = plotly_search_space(df, kde_resolution=40, max_scatter_points=500)
         g.write_html(os.path.join(self.tracker.graphics_path, "search_space.html"),
-                     full_html=False, include_plotlyjs='cdn')
+                     full_html=False, include_plotlyjs='cdn', include_mathjax=False)
         plt.close()
 
         g2 = plotly_logbook(logbook, population_df)
         g2.write_html(os.path.join(self.tracker.graphics_path, "logbook.html"),
-                     full_html=False, include_plotlyjs='cdn')
+                     full_html=False, include_plotlyjs='cdn', include_mathjax=False)
         plt.close()
 
         g3 = plot_logbook(logbook)
@@ -145,16 +233,48 @@ class GeneticAlgorithm:
 
     def custom_run(self, population_size: int, n_generations: int, cxpb: float = 0.5, mutation_prob: float = 0.5,
                    n_elites: int = 10, tournsize: int = 3, indpb: float = 0.05, checkpoint: str = None,
-                   early_stopping: bool = False, patience: int = 10, min_delta: float = 0.01):
+                   early_stopping: bool = False, patience: int = 10, min_delta: float = 0.01,
+                   initial_params: list = None, include_default: bool = False):
         """
         Run the genetic algorithm with tracking of each generation (from GeneticAlgorithmRunner)
+
+        Parameters
+        ----------
+        population_size : int
+            Size of the population
+        n_generations : int
+            Number of generations to run
+        cxpb : float
+            Crossover probability
+        mutation_prob : float
+            Mutation probability
+        n_elites : int
+            Number of elites in hall of fame
+        tournsize : int
+            Tournament size for selection
+        indpb : float
+            Independent probability for each attribute to be mutated
+        checkpoint : str
+            Path to checkpoint file
+        early_stopping : bool
+            Whether to use early stopping
+        patience : int
+            Number of generations without improvement before stopping
+        min_delta : float
+            Minimum improvement to consider as progress
+        initial_params : list of dict, optional
+            List of hyperparameter dictionaries to seed the population with
+        include_default : bool, optional
+            If True, include an individual representing sklearn defaults
         """
-        hof, pop = self._pre_run(indpb=indpb, n_elites=n_elites, population_size=population_size, tournsize=tournsize)
+        hof, pop = self._pre_run(indpb=indpb, n_elites=n_elites, population_size=population_size, tournsize=tournsize,
+                                  initial_params=initial_params, include_default=include_default)
         population, logbook, hof = self.custom_ea_simple(population=pop, toolbox=self.toolbox, cxpb=cxpb,
                                                          mutpb=mutation_prob, ngen=n_generations, halloffame=hof,
                                                          checkpoint_path=self.tracker.opt_run_checkpoint_path,
                                                          stats=self.stats, early_stopping=early_stopping,
-                                                         patience=patience, min_delta=min_delta)
+                                                         patience=patience, min_delta=min_delta,
+                                                         n_elites=n_elites)
         self.logbook = logbook
         self._log_and_visualize_results(logbook)
 
@@ -163,9 +283,16 @@ class GeneticAlgorithm:
     def custom_ea_simple(self, population: list, toolbox: base.Toolbox, cxpb: float = 0.5, mutpb: float = 0.5,
                          start_gen: int = 0, ngen: int = 4, checkpoint_path: str = None, stats: tools.Statistics = None,
                          halloffame: tools.HallOfFame = None, verbose: bool = True,
-                         early_stopping: bool = False, patience: int = 10, min_delta: float = 0.01):
+                         early_stopping: bool = False, patience: int = 10, min_delta: float = 0.01,
+                         n_elites: int = 3):
         """
-        Custom evolution algorithm with tracking and checkpointing (from GeneticAlgorithmRunner)
+        Custom evolution algorithm with tracking, checkpointing, and proper elitism.
+
+        Parameters
+        ----------
+        n_elites : int
+            Number of elite individuals to preserve each generation. These individuals
+            are copied directly to the next generation without modification.
         """
         logbook = tools.Logbook()
         logbook.header = ['gen', 'nevals'] + (stats.fields if stats else [])
@@ -174,10 +301,43 @@ class GeneticAlgorithm:
         best_fitness = None
         no_improve = 0
 
-        for gen in range(start_gen, ngen + 1):
-            self.tracker.start_progress_file(gen)
-            population = varAnd(population, toolbox, cxpb, mutpb)
+        # Evaluate the initial population first (generation 0)
+        invalid_ind = [ind for ind in population if not ind.fitness.valid]
+        fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
+        c = 1
+        self.tracker.start_progress_file(0)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+            ind_formatted = IndividualUtils(hyperparam_space=self.hyperparam_space,
+                                            mlopt_seed=self.seed).individual2dict(ind)
+            self.tracker.append_progress_file(0, ngen, c, len(invalid_ind), ind_formatted, fit)
+            c += 1
 
+        halloffame.update(population)
+        record = stats.compile(population) if stats else {}
+        logbook.record(gen=0, nevals=len(invalid_ind), **record)
+        self.populations.append([[ind, ind.fitness] for ind in population])
+
+        for gen in range(max(1, start_gen), ngen + 1):
+            self.tracker.start_progress_file(gen)
+
+            # ELITISM: Preserve the best n_elites individuals
+            elites = tools.selBest(population, n_elites)
+            # Clone elites to avoid modifying them
+            elites = [toolbox.clone(ind) for ind in elites]
+
+            # Select parents for offspring (excluding elites spots)
+            n_offspring = len(population) - n_elites
+            offspring = toolbox.select(population, n_offspring)
+            offspring = [toolbox.clone(ind) for ind in offspring]
+
+            # Apply crossover and mutation to offspring
+            offspring = varAnd(offspring, toolbox, cxpb, mutpb)
+
+            # Combine elites with offspring
+            population = elites + offspring
+
+            # Evaluate individuals with invalid fitness
             invalid_ind = [ind for ind in population if not ind.fitness.valid]
             fitnesses = toolbox.map(toolbox.evaluate, invalid_ind)
             c = 1
@@ -192,7 +352,6 @@ class GeneticAlgorithm:
             record = stats.compile(population) if stats else {}
             logbook.record(gen=gen, nevals=len(invalid_ind), **record)
 
-            population = toolbox.select(population, len(population))
             self.populations.append([[ind, ind.fitness] for ind in population])
 
             if checkpoint_path:

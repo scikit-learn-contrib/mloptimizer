@@ -55,7 +55,8 @@ class Optimizer:
                  eval_function: callable = train_score,
                  fitness_score=None, metrics=None, seed=random.randint(0, 1000000),
                  use_parallel=False, use_mlflow=False,
-                 early_stopping: bool = False, patience: int = 5, min_delta: float = 0.01):
+                 early_stopping: bool = False, patience: int = 5, min_delta: float = 0.01,
+                 initial_params: list = None, include_default: bool = False):
         """
         Creates object BaseOptimizer.
 
@@ -91,6 +92,10 @@ class Optimizer:
             Number of generations to wait before stopping if no improvement is observed.
         min_delta : float, optional (default=0.01)
             Minimum change in the fitness score to qualify as an improvement.
+        initial_params : list of dict, optional (default=None)
+            List of hyperparameter dictionaries to seed the initial population with.
+        include_default : bool, optional (default=False)
+            If True, include an individual representing sklearn defaults in the initial population.
         """
         from mloptimizer.domain.population import IndividualUtils
         # Model class
@@ -132,6 +137,10 @@ class Optimizer:
                 raise ValueError("min_delta must be non-negative.")
         self.patience = patience
         self.min_delta = min_delta
+
+        # Initial population seeding
+        self.initial_params = initial_params
+        self.include_default = include_default
 
         # Tracker
         self.tracker = Tracker(name="mloptimizer", folder=folder, log_file=log_file, use_mlflow=self.use_mlflow,
@@ -270,7 +279,8 @@ class Optimizer:
                                                   seed=self.mlopt_seed,
                                                   evaluator=self.evaluator,
                                                   use_parallel=self.use_parallel,
-                                                  maximize=is_classifier(self.estimator_class))
+                                                  maximize=is_classifier(self.estimator_class),
+                                                  estimator_class=self.estimator_class)
 
 
         # Run genetic algorithm
@@ -283,7 +293,9 @@ class Optimizer:
                                                                      checkpoint=checkpoint,
                                                                      early_stopping=self.early_stopping,
                                                                      patience=self.patience,
-                                                                     min_delta=self.min_delta)
+                                                                     min_delta=self.min_delta,
+                                                                     initial_params=self.initial_params,
+                                                                     include_default=self.include_default)
 
         #self.runs.append(ga_runner)
         #self.logbook = logbook
