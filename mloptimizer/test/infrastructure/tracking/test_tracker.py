@@ -35,8 +35,8 @@ def test_tracker_init(tracker_instance, tmp_path):
 
 def test_start_optimization(tracker_instance, caplog):
     tracker_instance.start_optimization("TestOptClass", 5)
-    assert "Initiating genetic optimization..." in caplog.text
-    assert "Algorithm: TestOptClass" in caplog.text
+    assert "Starting Genetic Algorithm Optimization" in caplog.text
+    assert "Optimizer: TestOptClass" in caplog.text
 
 
 def test_start_checkpoint_creates_directories(tracker_instance, tmp_path):
