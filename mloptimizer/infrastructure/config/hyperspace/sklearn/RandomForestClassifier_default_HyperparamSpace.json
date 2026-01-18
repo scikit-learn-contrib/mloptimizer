@@ -1,6 +1,5 @@
 {
     "fixed_hyperparams": {
-      "class_weight": "balanced"
     },
     "evolvable_hyperparams": {
         "max_features": {
@@ -26,7 +25,7 @@
         "max_depth": {
             "name": "max_depth",
             "min_value": 2,
-            "max_value": 10,
+            "max_value": 1000,
             "hyperparam_type": "int"
         },
         "min_impurity_decrease": {

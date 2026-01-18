@@ -16,9 +16,10 @@
         },
         "gamma": {
             "name": "gamma",
-            "min_value": -3,
-            "max_value": 3,
-            "hyperparam_type": "nexp"
+            "min_value": 0,
+            "max_value": 5,
+            "hyperparam_type": "list",
+            "values_str": ["scale", "auto", 0.001, 0.01, 0.1, 1.0]
         },
         "max_iter": {
             "name": "max_iter",
