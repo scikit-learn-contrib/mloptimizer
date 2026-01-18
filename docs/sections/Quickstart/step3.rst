@@ -50,13 +50,9 @@ During the optimization process, `GeneticSearch` provides real-time feedback on 
 
 **Example Output**
 
-Here’s a sample output from `GeneticSearch` while running the `fit()` method:
+Here's a sample output from `GeneticSearch` while running the `fit()` method:
 
 .. code-block:: text
-
-    WARNING:root:The folder . already exists and it will be used
-    INFO:mloptimizer.log:Initiating genetic optimization...
-    INFO:mloptimizer.log:Algorithm: Optimizer
 
     Genetic execution:   0%|          | 0/31 [00:00<?, ?it/s, best fitness=?]
     Genetic execution:   3%|▎         | 1/31 [00:00<00:00, 134.70it/s, best fitness=0.96]
@@ -69,6 +65,37 @@ Here’s a sample output from `GeneticSearch` while running the `fit()` method:
     DecisionTreeClassifier(ccp_alpha=0.00055, max_depth=4,
                            min_impurity_decrease=0.001, min_samples_split=5,
                            random_state=296596)
+
+**Enabling Detailed Logging**
+
+By default, mloptimizer follows the standard Python library pattern and does not output log messages to the console. To enable detailed logging output, configure Python's logging module before running the optimization:
+
+.. code-block:: python
+
+    import logging
+
+    # Enable INFO level logging for mloptimizer
+    logging.basicConfig(level=logging.INFO)
+
+    # Or configure just mloptimizer's logger
+    logging.getLogger("mloptimizer").setLevel(logging.INFO)
+    logging.getLogger("mloptimizer").addHandler(logging.StreamHandler())
+
+    # Now run your optimization
+    opt.fit(X, y)
+
+With logging enabled, you'll see additional output like:
+
+.. code-block:: text
+
+    2024-01-15 10:30:00,123 [INFO]: ======================================================================
+    2024-01-15 10:30:00,123 [INFO]: Starting Genetic Algorithm Optimization
+    2024-01-15 10:30:00,123 [INFO]: ======================================================================
+    2024-01-15 10:30:00,123 [INFO]:   Optimizer: Optimizer
+    2024-01-15 10:30:00,123 [INFO]:   Estimator: XGBClassifier
+    2024-01-15 10:30:00,123 [INFO]:   Population size: 20
+    2024-01-15 10:30:00,123 [INFO]:   Max generations: 10
+    ...
 
 Each line updates in real-time, providing:
 

@@ -17,7 +17,6 @@ The directory structure is organized as follows:
     ├── graphics
     │   ├── logbook.html
     │   └── search_space.html
-    ├── opt.log
     ├── progress
     │   ├── Generation_0.csv
     │   └── Generation_1.csv
@@ -36,8 +35,6 @@ Each directory and file serves a specific purpose:
 - **graphics**: Stores HTML visualizations of the optimization process.
     - `logbook.html`: An interactive logbook visualization showing optimization statistics and trends over generations.
     - `search_space.html`: A visualization of the search space, showing how hyperparameters were explored during optimization.
-
-- **opt.log**: The primary log file containing detailed information about the optimization process, including metrics and outcomes for each generation.
 
 - **progress**: Stores CSV files with detailed information about each generation's progress.
     - `Generation_0.csv`, `Generation_1.csv`: These files contain records of each individual in the population for each generation, including hyperparameters and fitness scores.

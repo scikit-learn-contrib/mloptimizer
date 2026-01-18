@@ -2,6 +2,8 @@ import logging
 import time
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from sklearn.model_selection import StratifiedKFold, TimeSeriesSplit, \
     train_test_split, KFold
 from sklearn.base import clone
@@ -198,10 +200,10 @@ def kfold_stratified_score(features, labels, clf, metrics, n_splits=4,
 
         # Train the classifier
         t1 = time.process_time()
-        logging.info("Training clf...")
+        logger.debug("Training clf...")
         clf_clone.fit(features_train, labels_train)
         t2 = time.process_time()
-        logging.info("Processing time: {:.3f}".format(t2 - t1))
+        logger.debug("Processing time: {:.3f}".format(t2 - t1))
 
         # Labels predicted for test split
         labels_pred_test = clf_clone.predict(features_test).reshape(-1)
@@ -291,12 +293,10 @@ def temporal_kfold_score(features, labels, clf, metrics, n_splits=4):
 
             # Train the classifier
             t1 = time.process_time()
-            logging.info("Training clf...")
-            print("Training clf...")
+            logger.debug("Training clf...")
             clf.fit(features_train, labels_train)
             t2 = time.process_time()
-            logging.info("Processing time: {:.3f}".format(t2 - t1))
-            print("Processing time: {:.3f}".format(t2 - t1))
+            logger.debug("Processing time: {:.3f}".format(t2 - t1))
             # Labels predicted for test split
             labels_pred_test = clf.predict(features_test)
             labels_predicted[test_index] = labels_pred_test

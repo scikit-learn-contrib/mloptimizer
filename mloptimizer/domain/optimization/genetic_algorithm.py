@@ -1,3 +1,4 @@
+import logging
 import random
 import os
 import copy
@@ -8,6 +9,8 @@ from deap import creator, base, tools, algorithms
 from deap.algorithms import eaSimple, varAnd
 
 from mloptimizer.domain.hyperspace import HyperparameterSpace
+
+logger = logging.getLogger(__name__)
 from matplotlib import pyplot as plt
 from mloptimizer.application.reporting.plots import plotly_search_space, plotly_logbook, plot_logbook
 from mloptimizer.infrastructure.tracking import Tracker
@@ -154,7 +157,7 @@ class GeneticAlgorithm:
 
                 self.toolbox.register("map", joblib_map)
                 if self.tracker:
-                    self.tracker.optimization_logger.debug("Parallelization enabled using joblib with loky backend")
+                    logger.debug("Parallelization enabled using joblib with loky backend")
             except ImportError:
                 print("joblib not available, falling back to sequential execution")
                 self.use_parallel = False
@@ -414,13 +417,13 @@ class GeneticAlgorithm:
 
             if early_stopping and no_improve >= patience:
                 self.generations_run_ = gen
-                self.tracker.optimization_logger.info("="*70)
-                self.tracker.optimization_logger.info(f"⚠️  Early Stopping Triggered")
-                self.tracker.optimization_logger.info(f"  Generation: {gen}/{ngen}")
-                self.tracker.optimization_logger.info(f"  Best fitness: {best_fitness:.6f}")
-                self.tracker.optimization_logger.info(f"  No improvement for {no_improve} generations (patience={patience})")
-                self.tracker.optimization_logger.info(f"  Stopping optimization early to avoid wasted evaluations")
-                self.tracker.optimization_logger.info("="*70)
+                logger.info("="*70)
+                logger.info(f"⚠️  Early Stopping Triggered")
+                logger.info(f"  Generation: {gen}/{ngen}")
+                logger.info(f"  Best fitness: {best_fitness:.6f}")
+                logger.info(f"  No improvement for {no_improve} generations (patience={patience})")
+                logger.info(f"  Stopping optimization early to avoid wasted evaluations")
+                logger.info("="*70)
                 self.stopped_early_ = True
                 break
 

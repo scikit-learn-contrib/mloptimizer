@@ -51,7 +51,7 @@ class Optimizer:
     """
 
     def __init__(self, estimator_class, features: np.array, labels: np.array,
-                 folder=os.curdir, log_file="mloptimizer.log",
+                 folder=os.curdir,
                  hyperparam_space: HyperparameterSpace = None,
                  genetic_params: dict = None,
                  eval_function: callable = train_score,
@@ -72,8 +72,6 @@ class Optimizer:
             np.array with the labels
         folder : path, optional (default=os.curdir)
             folder to store the structure of files and folders product of executions
-        log_file : str, optional (default="mloptimizer.log")
-            log file name
         hyperparam_space : HyperparameterSpace, optional (default=None)
             object with the hyperparameter space: fixed and evolvable hyperparams
         genetics_params : dict, optional (default=None)
@@ -148,7 +146,7 @@ class Optimizer:
         self.include_default = include_default
 
         # Tracker
-        self.tracker = Tracker(name="mloptimizer", folder=folder, log_file=log_file, use_mlflow=self.use_mlflow,
+        self.tracker = Tracker(name="mloptimizer", folder=folder, use_mlflow=self.use_mlflow,
                                use_parallel=self.use_parallel, disable_file_output=self.disable_file_output)
 
         # Evaluator

@@ -1,70 +1,7 @@
 import logging
 import os
 
-
-def init_logger(filename='mloptimizer.log', log_path=".", debug=False, file_output=True):
-    """
-    Initializes a logger and returns it.
-
-    Parameters
-    ----------
-    filename : str, optional
-        The name of the log file. The default is 'mloptimizer.log'.
-    log_path : str, optional
-        The path of the log file. The default is ".".
-    debug : bool, optional
-        Activate debug level. The default is False.
-    file_output : bool, optional
-        If True, logs to file. If False, only logs to console. The default is True.
-    Returns
-    -------
-    custom_logger : logging.Logger
-        The logger.
-    logfile_path : str or None
-        The path to the log file if file_output=True, otherwise None.
-    """
-    # Some logger variables
-    logfile_path = os.path.join(log_path, filename) if file_output else None
-
-    log_level = logging.INFO
-
-    if debug:
-        log_level = logging.DEBUG
-
-    # Create a custom logger
-    custom_logger = logging.getLogger(filename)
-    custom_logger.setLevel(log_level)
-
-    # Create logger formatters
-    # DEBUG mode: show file path and line number for troubleshooting
-    # INFO mode: clean output without file paths
-    if debug:
-        log_format = "%(asctime)s [%(levelname)s]: %(message)s in %(pathname)s:%(lineno)d"
-    else:
-        log_format = "%(asctime)s [%(levelname)s]: %(message)s"
-    logger_formatter = logging.Formatter(log_format)
-
-    # Create file handler only if file output is enabled
-    # File handler always uses DEBUG format with full details
-    if file_output:
-        file_log_format = "%(asctime)s [%(levelname)s]: %(message)s in %(pathname)s:%(lineno)d"
-        file_formatter = logging.Formatter(file_log_format)
-        file_handler = logging.FileHandler(logfile_path)
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(file_formatter)
-        custom_logger.addHandler(file_handler)
-
-    # Console handler - uses clean format unless DEBUG mode
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(log_level)
-    console_handler.setFormatter(logger_formatter)
-    custom_logger.addHandler(console_handler)
-
-    # custom_logger.propagate = False
-
-    # Logger configured
-    custom_logger.debug("Logger configured")
-    return custom_logger, logfile_path
+logger = logging.getLogger(__name__)
 
 
 def create_optimization_folder(folder):
@@ -82,9 +19,9 @@ def create_optimization_folder(folder):
         The path of the folder created.
     """
     if os.path.exists(folder):
-        logging.warning("The folder {} already exists and it will be used".format(folder))
+        logger.warning("The folder {} already exists and it will be used".format(folder))
     elif os.makedirs(folder, exist_ok=True):
-        logging.warning("The folder {} has been created.".format(folder))
+        logger.warning("The folder {} has been created.".format(folder))
     else:
-        logging.error("The folder {} could not be created.".format(folder))
+        logger.error("The folder {} could not be created.".format(folder))
     return folder
