@@ -1,5 +1,6 @@
 import subprocess
 import socket
+import sys
 import time
 import pytest
 from pathlib import Path
@@ -26,7 +27,7 @@ def mlflow_server():
 
     if not is_port_open(MLFLOW_PORT):
         proc = subprocess.Popen([
-            "mlflow", "server",
+            sys.executable, "-m", "mlflow", "server",
             "--backend-store-uri", f"sqlite:///{db_path}",
             "--default-artifact-root", str(artifact_root),
             "--host", "127.0.0.1",
