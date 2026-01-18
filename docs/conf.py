@@ -52,13 +52,14 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
     'scikit-learn': ('https://scikit-learn.org/stable/', None),
-    'mlflow': ('https://www.mlflow.org/docs/latest/', None),
+    # MLflow inventory temporarily disabled due to 403 errors
+    # 'mlflow': ('https://www.mlflow.org/docs/latest/', None),
     'xgboost': ('https://xgboost.readthedocs.io/en/latest/', None),
     'lightgbm': ('https://lightgbm.readthedocs.io/en/latest/', None),
     'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
     'matplotlib': ('https://matplotlib.org/stable/', None),
     'seaborn': ('https://seaborn.pydata.org/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),  # Updated: removed '/reference/' from URL
     'deap': ('https://deap.readthedocs.io/en/master/', None),
 }
 
