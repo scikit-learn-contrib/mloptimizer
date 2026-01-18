@@ -183,7 +183,10 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
                         colorscale: str = "Blues",
                         kde_line_color: str = "rgba(31, 119, 180, 1.0)",
                         kde_fillcolor: str = "rgba(31, 119, 180, 0.2)",
-                        font_size: int = 10
+                        font_size: int = 10,
+                        kde_resolution: int = 50,
+                        max_scatter_points: int = 1000,
+                        use_webgl: bool = True
                         ):
     """
     Generate plotly figure from populations dataframe and features. Search space.
@@ -206,6 +209,16 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
         The fill color for the KDE distribution plots
     font_size : int
         The font size for the axis labels and ticks
+    kde_resolution : int
+        Resolution of KDE grids (default 50). Lower = smaller file size.
+        Use 25-35 for documentation, 50-100 for high-fidelity interactive use.
+    max_scatter_points : int
+        Maximum scatter points per subplot (default 1000). Data is sampled
+        if exceeded. Set to None to disable sampling.
+    use_webgl : bool
+        If True (default), use Scattergl (WebGL) for scatter plots.
+        Set to False to use SVG-based Scatter, which avoids WebGL crashes
+        but may be slower with many points. Recommended False for docs.
     Returns
     -------
     fig : plotly.graph_objects.Figure
@@ -220,25 +233,43 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
             raise ValueError(f"Features not found in dataframe: {missing_features}")
         features = list(features)
 
+    # Filter out features with zero variance (single unique value)
+    # These produce empty subplots since KDE/scatter can't be computed
+    features = [f for f in features if populations_df[f].nunique() > 1]
+
+    # Sample data if too large to reduce file size and prevent WebGL crashes
+    if max_scatter_points is not None and len(populations_df) > max_scatter_points:
+        scatter_df = populations_df.sample(n=max_scatter_points, random_state=42)
+    else:
+        scatter_df = populations_df
+
     n_features = len(features)
 
     # Smart scaling based on number of features
     if n_features <= 3:
         fig_size = 700
         title_size = font_size + 4
+        tick_size = font_size
         marker_size = max(3, int(s / 4 * (font_size / 11)))
+        max_ticks = 6
     elif n_features <= 5:
         fig_size = 900
         title_size = font_size + 3
+        tick_size = font_size - 1
         marker_size = max(2, int(s / 5 * (font_size / 11)))
+        max_ticks = 5
     elif n_features <= 8:
         fig_size = 1000
         title_size = font_size + 2
+        tick_size = font_size - 2
         marker_size = max(1, int(s / 6 * (font_size / 11)))
+        max_ticks = 4
     else:
         fig_size = 1100
         title_size = font_size + 1
+        tick_size = max(6, font_size - 3)
         marker_size = max(1, int(s / 8 * (font_size / 11)))
+        max_ticks = 3
 
     # Create subplots with tighter spacing for many features
     spacing = max(0.01, 0.03 - (n_features * 0.002))
@@ -256,10 +287,11 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
             col_idx = j + 1
 
             if i < j:  # Upper triangle - scatter plots
+                scatter_class = go.Scattergl if use_webgl else go.Scatter
                 fig.add_trace(
-                    go.Scattergl(
-                        x=populations_df[col_feature],
-                        y=populations_df[row_feature],
+                    scatter_class(
+                        x=scatter_df[col_feature],
+                        y=scatter_df[row_feature],
                         mode='markers',
                         marker=dict(
                             size=marker_size,
@@ -282,7 +314,9 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
                         xmin, xmax = x_data.min(), x_data.max()
                         ymin, ymax = y_data.min(), y_data.max()
 
-                        xx, yy = np.mgrid[xmin:xmax:100j, ymin:ymax:100j]
+                        # Use configurable resolution for smaller file sizes
+                        grid_res = complex(0, kde_resolution)
+                        xx, yy = np.mgrid[xmin:xmax:grid_res, ymin:ymax:grid_res]
                         positions = np.vstack([xx.ravel(), yy.ravel()])
                         values = np.vstack([x_data, y_data])
                         kernel = stats.gaussian_kde(values)
@@ -314,7 +348,8 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
                 try:
                     if len(data) > 1 and np.nanstd(data) > 0:
                         kde = stats.gaussian_kde(data)
-                        x_range = np.linspace(data.min(), data.max(), 200)
+                        # Use 2x kde_resolution for 1D plots (still much smaller than contours)
+                        x_range = np.linspace(data.min(), data.max(), kde_resolution * 2)
                         y_kde = kde(x_range)
 
                         fig.add_trace(
@@ -339,7 +374,8 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
                 fig.update_xaxes(
                     title_text=col_feature,
                     title_font=dict(size=title_size),
-                    tickfont=dict(size=font_size),
+                    tickfont=dict(size=tick_size),
+                    nticks=max_ticks,
                     row=row_idx,
                     col=col_idx
                 )
@@ -347,7 +383,8 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
                 fig.update_yaxes(
                     title_text=row_feature,
                     title_font=dict(size=title_size),
-                    tickfont=dict(size=font_size),
+                    tickfont=dict(size=tick_size),
+                    nticks=max_ticks,
                     row=row_idx,
                     col=col_idx
                 )
@@ -363,9 +400,117 @@ def plotly_search_space(populations_df: pd.DataFrame, features: list = None, s=2
         margin=dict(l=margin_size, r=20, t=20, b=margin_size)
     )
 
-    # Update all axes
-    fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(size=font_size))
-    fig.update_yaxes(showgrid=False, zeroline=False, tickfont=dict(size=font_size))
+    # Update all axes with adaptive tick sizing
+    fig.update_xaxes(showgrid=False, zeroline=False, tickfont=dict(size=tick_size), nticks=max_ticks)
+    fig.update_yaxes(showgrid=False, zeroline=False, tickfont=dict(size=tick_size), nticks=max_ticks)
+
+    return fig
+
+
+def save_plotly_figure(fig, path, for_docs=False):
+    """
+    Save a Plotly figure with optimized settings.
+
+    Parameters
+    ----------
+    fig : plotly.graph_objects.Figure
+        The Plotly figure to save
+    path : str
+        Output file path. Extension determines format:
+        - .html: Interactive HTML (use for_docs=True for smaller files)
+        - .png, .jpg, .svg, .pdf: Static image (requires kaleido)
+    for_docs : bool
+        If True, optimizes for documentation (smaller file, no MathJax).
+        Recommended for Sphinx galleries.
+
+    Returns
+    -------
+    str
+        The path where the file was saved
+    """
+    import os
+    ext = os.path.splitext(path)[1].lower()
+
+    if ext == '.html':
+        # HTML output with size optimizations
+        fig.write_html(
+            path,
+            include_plotlyjs='cdn',  # Load from CDN instead of embedding (~3MB saved)
+            full_html=not for_docs,  # Minimal HTML for docs
+            include_mathjax=False,   # Skip MathJax if not needed
+            config={
+                'displayModeBar': True,
+                'displaylogo': False,
+                'responsive': True,  # Resize plot to fit container width
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d'] if for_docs else []
+            }
+        )
+    elif ext in ('.png', '.jpg', '.jpeg', '.svg', '.pdf', '.webp'):
+        # Static image - ideal for documentation, no WebGL issues
+        fig.write_image(path, scale=2 if ext in ('.png', '.jpg', '.jpeg', '.webp') else 1)
+    else:
+        raise ValueError(f"Unsupported format: {ext}. Use .html, .png, .jpg, .svg, .pdf, or .webp")
+
+    return path
+
+
+def plotly_search_space_for_docs(populations_df: pd.DataFrame, features: list = None,
+                                  output_path: str = None, image_format: str = "png"):
+    """
+    Generate a documentation-optimized search space plot.
+
+    This is a convenience function that creates smaller, faster-loading plots
+    suitable for Sphinx documentation and web embedding. It uses aggressive
+    size optimizations and can save directly to static image formats.
+
+    Parameters
+    ----------
+    populations_df : pd.DataFrame
+        The dataframe with the population data
+    features : list, optional
+        The features to plot (column names). If None, uses all numeric columns.
+    output_path : str, optional
+        If provided, saves the figure to this path. Format determined by extension
+        (.png, .svg, .html). If None, returns the figure without saving.
+    image_format : str
+        Default format when output_path has no extension. One of: 'png', 'svg', 'html'.
+        Recommended: 'png' or 'svg' for docs (no WebGL issues).
+
+    Returns
+    -------
+    fig : plotly.graph_objects.Figure
+        The figure object
+
+    Examples
+    --------
+    >>> # For Sphinx documentation - saves as static PNG (recommended)
+    >>> fig = plotly_search_space_for_docs(df, output_path="search_space.png")
+
+    >>> # For interactive HTML with minimal size
+    >>> fig = plotly_search_space_for_docs(df, output_path="search_space.html")
+
+    >>> # Just get the figure without saving
+    >>> fig = plotly_search_space_for_docs(df)
+    """
+    import os
+
+    # Create figure with documentation-optimized settings
+    fig = plotly_search_space(
+        populations_df,
+        features=features,
+        kde_resolution=25,       # Low resolution for small file size
+        max_scatter_points=300,  # Minimal scatter points
+        font_size=9,             # Slightly smaller fonts
+        s=15,                    # Smaller markers
+        use_webgl=False          # SVG-based scatter avoids WebGL crashes
+    )
+
+    # Save if path provided
+    if output_path:
+        ext = os.path.splitext(output_path)[1].lower()
+        if not ext:
+            output_path = f"{output_path}.{image_format}"
+        save_plotly_figure(fig, output_path, for_docs=True)
 
     return fig
 
