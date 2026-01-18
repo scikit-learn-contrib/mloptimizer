@@ -55,7 +55,7 @@ class Optimizer:
                  genetic_params: dict = None,
                  eval_function: callable = train_score,
                  fitness_score=None, metrics=None, seed=random.randint(0, 1000000),
-                 use_parallel=False, use_mlflow=False,
+                 use_parallel=False, use_mlflow=False, disable_file_output=True,
                  early_stopping: bool = False, patience: int = 5, min_delta: float = 0.01,
                  initial_params: list = None, include_default: bool = False):
         """
@@ -129,6 +129,9 @@ class Optimizer:
         # mlflow
         self.use_mlflow = use_mlflow
 
+        # File output control
+        self.disable_file_output = disable_file_output
+
         # Early stopping
         self.early_stopping = early_stopping
         if self.early_stopping:
@@ -145,7 +148,7 @@ class Optimizer:
 
         # Tracker
         self.tracker = Tracker(name="mloptimizer", folder=folder, log_file=log_file, use_mlflow=self.use_mlflow,
-                               use_parallel=self.use_parallel)
+                               use_parallel=self.use_parallel, disable_file_output=self.disable_file_output)
 
         # Evaluator
         self.individual_utils = IndividualUtils(hyperparam_space=self.hyperparam_space,

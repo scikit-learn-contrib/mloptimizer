@@ -212,6 +212,10 @@ class GeneticAlgorithm:
         """
         Log and visualize the results of the genetic algorithm.
         """
+        # Skip visualization if file output is disabled
+        if self.tracker.disable_file_output:
+            return
+
         hyperparam_names = list(self.hyperparam_space.evolvable_hyperparams.keys())
         hyperparam_names.append("fitness")
         population_df = self.population_2_df()
@@ -354,7 +358,7 @@ class GeneticAlgorithm:
 
             self.populations.append([[ind, ind.fitness] for ind in population])
 
-            if checkpoint_path:
+            if checkpoint_path and not self.tracker.disable_file_output:
                 cp = dict(population=population, generation=gen, halloffame=halloffame, logbook=logbook,
                           rndstate=self.seed)
                 cp_file = os.path.join(checkpoint_path, "cp_gen_{}.pkl".format(gen))

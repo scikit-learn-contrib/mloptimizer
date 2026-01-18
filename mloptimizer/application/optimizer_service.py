@@ -15,7 +15,8 @@ class OptimizerService:
                  genetic_params: dict,
                  eval_function: callable = train_score, scoring = None,
                  metrics:dict = None, seed: int=None, use_parallel: bool=False,
-                 use_mlflow: bool=False, early_stopping: bool = False,
+                 use_mlflow: bool=False, disable_file_output: bool=True,
+                 early_stopping: bool = False,
                  patience: int = 5, min_delta: float = 0.01,
                  initial_params: list = None, include_default: bool = False):
         """
@@ -59,6 +60,7 @@ class OptimizerService:
         self.seed = seed or random.randint(0, 1000000)
         self.use_parallel = use_parallel
         self.use_mlflow = use_mlflow
+        self.disable_file_output = disable_file_output
         self.optimizer = None
 
         # Early stopping parameters
@@ -109,6 +111,7 @@ class OptimizerService:
             seed=self.seed,
             use_parallel=self.use_parallel,
             use_mlflow=self.use_mlflow,
+            disable_file_output=self.disable_file_output,
             early_stopping=self.early_stopping,
             patience=self.patience,
             min_delta=self.min_delta,

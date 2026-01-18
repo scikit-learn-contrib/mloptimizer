@@ -29,15 +29,22 @@ class Tracker:
     """
 
     def __init__(self, name, folder=os.curdir, log_file="mloptimizer.log",
-                 use_parallel=False, use_mlflow=False):
+                 use_parallel=False, use_mlflow=False, disable_file_output=False):
 
         self.name = name
         self.gen = 0
         self.individual_index = 0
-        # Main folder, current by default
-        self.folder = create_optimization_folder(folder)
-        # Log files
-        self.mloptimizer_logger, self.log_file = init_logger(log_file, self.folder)
+        self.disable_file_output = disable_file_output
+
+        # Main folder and logger setup
+        if not self.disable_file_output:
+            # Normal mode: create folder and log to file
+            self.folder = create_optimization_folder(folder)
+            self.mloptimizer_logger, self.log_file = init_logger(log_file, self.folder, file_output=True)
+        else:
+            # No file output: skip folder creation, log only to console
+            self.folder = None
+            self.mloptimizer_logger, self.log_file = init_logger(log_file, file_output=False)
         self.optimization_logger = None
 
         # Paths
@@ -183,6 +190,28 @@ class Tracker:
         estimator_class : class
             Class of the estimator being optimized used to create the checkpoint path.
         """
+        # Skip all directory creation if file output is disabled
+        if self.disable_file_output:
+            # Set paths to None to prevent file operations later
+            self.opt_run_folder = None
+            self.opt_run_checkpoint_path = None
+            self.results_path = None
+            self.graphics_path = None
+            self.progress_path = None
+
+            # Create console-only logger for optimization tracking
+            self.optimization_logger, _ = init_logger("opt.log", file_output=False)
+
+            if self.use_mlflow:
+                self.start_mlflow_experiment()
+                # Generate a run name even without folders
+                if not opt_run_folder_name:
+                    opt_run_folder_name = "{}_{}".format(
+                        datetime.now().strftime("%Y%m%d_%H%M%S"),
+                        estimator_class.__name__)
+                self.start_mlflow_run(opt_run_folder_name)
+            return
+
         # Create checkpoint_path from date and algorithm
         if not opt_run_folder_name:
             opt_run_folder_name = "{}_{}".format(
@@ -238,7 +267,8 @@ class Tracker:
                 self.best_fitness = fitness_score
                 self.gen_pbar.set_postfix({"best fitness": self.best_fitness})
 
-        self.optimization_logger.debug(f"Adding to mlflow...\nClassifier: {classifier}\nMetrics: {metrics}")
+        if self.optimization_logger:
+            self.optimization_logger.debug(f"Adding to mlflow...\nClassifier: {classifier}\nMetrics: {metrics}")
         self.individual_index += 1
         individual_index = self.individual_index
         if self.use_mlflow:
@@ -278,6 +308,8 @@ class Tracker:
         filename : str, optional (default=None)
             filename to save the logbook
         """
+        if self.disable_file_output:
+            return
         if filename is None:
             filename = os.path.join(self.results_path, 'logbook.csv')
         pd.DataFrame(logbook).to_csv(filename, index=False)
@@ -293,6 +325,8 @@ class Tracker:
         filename : str, optional (default=None)
             filename to save the population
         """
+        if self.disable_file_output:
+            return
         if filename is None:
             filename = os.path.join(self.results_path, 'populations.csv')
         populations.sort_values(by=['fitness'], ascending=False
@@ -302,21 +336,34 @@ class Tracker:
         # tqdm is not compatible with parallel execution
         if not self.use_parallel:
             self.gen_pbar.update()
+
+        if self.disable_file_output:
+            return
+
         progress_gen_path = os.path.join(self.progress_path, "Generation_{}.csv".format(gen))
         header_progress_gen_file = "i;total;Individual;fitness\n"
         with open(progress_gen_path, "w") as progress_gen_file:
             progress_gen_file.write(header_progress_gen_file)
             progress_gen_file.close()
-        self.optimization_logger.debug("Generation: {}".format(gen))
+
+        if self.optimization_logger:
+            self.optimization_logger.debug("Generation: {}".format(gen))
 
         # self.pbar.refresh()
 
     def append_progress_file(self, gen: int, ngen: int, c: int, evaluations_pending: int, ind_formatted, fit):
-        self.optimization_logger.debug(
-            "Fitting individual (informational purpose): gen {} - ind {} of {}".format(
-                gen, c, evaluations_pending
+        if self.optimization_logger:
+            self.optimization_logger.debug(
+                "Fitting individual (informational purpose): gen {} - ind {} of {}".format(
+                    gen, c, evaluations_pending
+                )
             )
-        )
+
+        if self.disable_file_output:
+            if not self.use_parallel and gen == ngen and c == evaluations_pending:
+                self.gen_pbar.close()
+            return
+
         progress_gen_path = os.path.join(self.progress_path, "Generation_{}.csv".format(gen))
         with open(progress_gen_path, "a") as progress_gen_file:
             progress_gen_file.write(
