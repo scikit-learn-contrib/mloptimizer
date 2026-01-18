@@ -366,7 +366,7 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
         # Extract best hyperparameters from the optimizer service
         self.best_params_ = self.best_estimator_.get_params()
 
-        # Store the detailed cross-validation or genetic algorithm results TODO
+        # Store the detailed cross-validation or genetic algorithm results
         self.cv_results_ = self._optimizer_service.optimizer.genetic_algorithm.logbook
 
         # Store logbook
@@ -561,15 +561,6 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
                 "n_elites": self.n_elites, "tournsize": self.tournsize,
                 "indpb": self.indpb
         }
-
-    def set_genetic_params(self, **params):
-        self.genetic_params = deepcopy(params) if params else None
-
-        self._internal_genetic_params = self.default_genetic_params.copy()
-        if self.genetic_params:
-            self._internal_genetic_params.update(self.genetic_params)
-
-        return self
 
     def get_feature_names_out(self, input_features=None):
         """Get output feature names for transformation.
