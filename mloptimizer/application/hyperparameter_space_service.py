@@ -13,7 +13,7 @@ class HyperparameterSpaceService:
     @staticmethod
     def _detect_library(estimator_class):
         module_name = estimator_class.__module__
-        supported_modules = ['sklearn', 'catboost', 'xgboost']
+        supported_modules = ['sklearn', 'catboost', 'xgboost', 'lightgbm']
 
         for module in supported_modules:
             if module_name.startswith(module):

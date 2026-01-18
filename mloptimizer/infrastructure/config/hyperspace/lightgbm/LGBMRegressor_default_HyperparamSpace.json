@@ -1,0 +1,59 @@
+{
+    "fixed_hyperparams": {
+    },
+    "evolvable_hyperparams": {
+        "learning_rate": {
+            "name": "learning_rate",
+            "min_value": 1,
+            "max_value": 100,
+            "hyperparam_type": "float",
+            "scale": 1000
+        },
+        "max_depth": {
+            "name": "max_depth",
+            "min_value": 2,
+            "max_value": 15,
+            "hyperparam_type": "int"
+        },
+        "n_estimators": {
+            "name": "n_estimators",
+            "min_value": 50,
+            "max_value": 500,
+            "hyperparam_type": "int"
+        },
+        "num_leaves": {
+            "name": "num_leaves",
+            "min_value": 20,
+            "max_value": 150,
+            "hyperparam_type": "int"
+        },
+        "subsample": {
+            "name": "subsample",
+            "min_value": 600,
+            "max_value": 1000,
+            "hyperparam_type": "float",
+            "scale": 1000
+        },
+        "colsample_bytree": {
+            "name": "colsample_bytree",
+            "min_value": 600,
+            "max_value": 1000,
+            "hyperparam_type": "float",
+            "scale": 1000
+        },
+        "reg_alpha": {
+            "name": "reg_alpha",
+            "min_value": 0,
+            "max_value": 10,
+            "hyperparam_type": "float",
+            "scale": 10
+        },
+        "reg_lambda": {
+            "name": "reg_lambda",
+            "min_value": 0,
+            "max_value": 10,
+            "hyperparam_type": "float",
+            "scale": 10
+        }
+    }
+}

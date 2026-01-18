@@ -1,5 +1,6 @@
 import os
 import random
+import inspect
 import numpy as np
 from sklearn.base import is_regressor, is_classifier
 
@@ -166,8 +167,20 @@ class Optimizer:
         """
         if self.hyperparam_space is None:
             raise ValueError("hyperparam_space is None")
-        # Default params of the estimator_class
+
+        # Get default params of the estimator_class
         default_estimator_params = set(self.estimator_class().get_params().keys())
+
+        # For estimators like CatBoost that don't properly implement get_params(),
+        # use inspect to get constructor parameters
+        is_catboost = 'catboost' in self.estimator_class.__module__.lower()
+        if not default_estimator_params or is_catboost:
+            sig = inspect.signature(self.estimator_class.__init__)
+            default_estimator_params = set(
+                param_name for param_name in sig.parameters.keys()
+                if param_name != 'self'
+            )
+
         hyperparam_space_params = set(self.hyperparam_space.get_all_params().keys())
         illegal_params = hyperparam_space_params - default_estimator_params
 

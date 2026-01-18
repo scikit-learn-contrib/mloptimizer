@@ -1,17 +1,13 @@
 {
     "fixed_hyperparams": {
-      "auto_class_weights": "Balanced",
-      "bootstrap_type": "Bernoulli",
-      "allow_writing_files": false,
-      "verbose": false
     },
     "evolvable_hyperparams": {
         "learning_rate": {
             "name": "learning_rate",
             "min_value": 1,
-            "max_value": 10,
+            "max_value": 100,
             "hyperparam_type": "float",
-            "scale": 100
+            "scale": 1000
         },
         "depth": {
             "name": "depth",
@@ -19,18 +15,11 @@
             "max_value": 10,
             "hyperparam_type": "int"
         },
-        "n_estimators": {
-            "name": "n_estimators",
-            "min_value": 100,
+        "iterations": {
+            "name": "iterations",
+            "min_value": 50,
             "max_value": 500,
             "hyperparam_type": "int"
-        },
-        "subsample": {
-            "name": "subsample",
-            "min_value": 700,
-            "max_value": 1000,
-            "hyperparam_type": "float",
-            "scale": 1000
         },
         "l2_leaf_reg": {
             "name": "l2_leaf_reg",
@@ -38,12 +27,12 @@
             "max_value": 10,
             "hyperparam_type": "int"
         },
-        "colsample_bylevel": {
-            "name": "colsample_bylevel",
-            "min_value": 50,
-            "max_value": 100,
+        "rsm": {
+            "name": "rsm",
+            "min_value": 600,
+            "max_value": 1000,
             "hyperparam_type": "float",
-            "scale": 100
+            "scale": 1000
         },
         "random_strength": {
             "name": "random_strength",

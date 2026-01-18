@@ -1,0 +1,93 @@
+"""
+AdaBoost Optimization
+=====================
+Hyperparameter optimization for AdaBoost ensemble algorithm.
+"""
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, f1_score
+import numpy as np
+import plotly
+from mloptimizer.interfaces import HyperparameterSpaceBuilder, GeneticSearch
+from mloptimizer.application.reporting.plots import plotly_search_space, plotly_logbook
+
+# %%
+# Load and prepare the dataset
+print("Loading Breast Cancer dataset...")
+data = load_breast_cancer()
+X, y = data.data, data.target
+
+print(f"Dataset shape: {X.shape}")
+
+# %%
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# %%
+# Define the hyperparameter space
+hyperparam_space = HyperparameterSpaceBuilder.get_default_space(
+    estimator_class=AdaBoostClassifier
+)
+
+# %%
+# Configure and run the genetic optimization
+genetic_params = {
+    'generations': 5,
+    'population_size': 8,
+    'n_elites': 2,
+    'seed': 42,
+    'use_mlflow': False,
+    'use_parallel': False
+}
+
+opt = GeneticSearch(
+    estimator_class=AdaBoostClassifier,
+    hyperparam_space=hyperparam_space,
+    cv=3,
+    scoring='accuracy',
+    **genetic_params
+)
+
+print("Starting AdaBoostClassifier optimization...")
+opt.fit(X_train, y_train)
+
+# %%
+# Evaluate the optimized model
+best_clf = opt.best_estimator_
+y_pred = best_clf.predict(X_test)
+test_accuracy = accuracy_score(y_test, y_pred)
+test_f1 = f1_score(y_test, y_pred, average='binary')
+
+print(f"\nOptimization completed!")
+print(f"Best parameters: {opt.best_params_}")
+print(f"Test accuracy: {test_accuracy:.4f}")
+print(f"Test F1: {test_f1:.4f}")
+
+# %%
+# Visualize the search space
+population_df = opt.populations_
+top_params = ['n_estimators', 'learning_rate', 'fitness']
+df_filtered = population_df[top_params]
+g_search_space = plotly_search_space(df_filtered, top_params)
+g_search_space.update_layout(
+    title="AdaBoostClassifier Hyperparameter Search Space",
+    autosize=True,
+    width=None,
+    height=650
+)
+plotly.io.show(g_search_space, config={'responsive': True})
+
+# %%
+# Visualize the optimization evolution
+g_logbook = plotly_logbook(opt.logbook_, population_df)
+g_logbook.update_layout(
+    title="AdaBoostClassifier Optimization Evolution",
+    autosize=True,
+    width=None,
+    height=500
+)
+plotly.io.show(g_logbook, config={'responsive': True})

@@ -26,6 +26,7 @@ sphinx-autodoc-typehints
 tensorflow>=2.12.0
 tqdm
 xgboost>=1.7.3
+lightgbm
 sphinx-github-changelog
 sphinx-contributors
 sphinx_copybutton
