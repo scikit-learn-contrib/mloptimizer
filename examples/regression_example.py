@@ -32,18 +32,33 @@ from sklearn.ensemble import RandomForestRegressor
 hyperparam_space = HyperparameterSpace.get_default_hyperparameter_space(RandomForestRegressor)
 
 # %%
-# We use the Optimizer class to optimize a regression model.
+# We use the GeneticSearch class to optimize a regression model.
+# Configure the genetic algorithm with default parameters shown explicitly.
+# Note: Values reduced for faster documentation builds. For production, use larger values.
 from mloptimizer.interfaces import GeneticSearch
-mlopt = GeneticSearch(estimator_class=RandomForestRegressor,
-                      hyperparam_space=hyperparam_space)
+
+genetic_params = {
+    'generations': 8,
+    'population_size': 15,
+    'n_elites': 2,
+    'seed': 42
+}
+
+mlopt = GeneticSearch(
+    estimator_class=RandomForestRegressor,
+    hyperparam_space=hyperparam_space,
+    cv=5,
+    scoring='rmse',  # Root Mean Squared Error (available: 'rmse', 'mse', 'mae')
+    **genetic_params
+)
 
 mlopt.fit(X, y)
-clf = opt.best_estimator_
+clf = mlopt.best_estimator_
 # %%
-# The best individual is returned by the optimize_clf method.
-# However, this individual is not the trained model, but the hyperparameters used to train the best model.
-# As the literature suggests, we can use the best hyperparameters to train the model again with all the data
-# to obtain the best model or use a cross-validation estimator to make new predictions.
+# The best estimator with optimized hyperparameters is stored in best_estimator_.
+# This estimator is trained with the best hyperparameters found during optimization.
+# As the literature suggests, you can retrain with all the data or use cross-validation
+# estimators for making predictions with better generalization.
 print(clf)
 
 # %%
@@ -63,16 +78,25 @@ custom_hyperparam_space = HyperparameterSpace(fixed_hyperparams, evolvable_hyper
 
 
 # %%
-# Furthermore, it is possible to set the metrics used to evaluate the model, and use one of them as the fitness score.
-from sklearn.metrics import mean_squared_error, root_mean_squared_error
-#regression_metrics = {
-#        "mse": mean_squared_error,
-#        "rmse": root_mean_squared_error
-#}
+# Furthermore, it is possible to set the metrics used to evaluate the model.
+# We configure the genetic algorithm for this custom hyperparameter space.
+# Note: Values reduced for faster documentation builds.
+genetic_params_custom = {
+    'generations': 8,
+    'population_size': 15,
+    'n_elites': 2,
+    'cxpb': 0.5,
+    'mutpb': 0.8,
+    'seed': 42
+}
 
-mlopt = GeneticSearch(estimator_class=RandomForestRegressor,
-                      hyperparam_space=custom_hyperparam_space,
-                      scoring='rmse')
+mlopt = GeneticSearch(
+    estimator_class=RandomForestRegressor,
+    hyperparam_space=custom_hyperparam_space,
+    cv=5,
+    scoring='rmse',  # Root Mean Squared Error
+    **genetic_params_custom
+)
 
 mlopt.fit(X, y)
 

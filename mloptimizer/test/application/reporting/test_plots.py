@@ -1,6 +1,6 @@
 import pytest
 from mloptimizer.application.reporting.plots import logbook_to_pandas, plot_logbook, plot_search_space, \
-    plotly_logbook, plotly_search_space
+    plotly_logbook, plotly_search_space, plotly_search_space_for_docs
 from mloptimizer.domain.optimization import Optimizer
 from mloptimizer.domain.hyperspace import HyperparameterSpace
 from sklearn.tree import DecisionTreeClassifier
@@ -64,3 +64,25 @@ def test_plotly_search_space(default_tree_optimizer):
     print(f"Writing report to: {out}")  # muestra en consola la ruta exacta (donde está `test_plots.py`)
     fig.write_html(str(out))
     assert out.exists() and out.stat().st_size > 0
+
+
+def test_plotly_search_space_for_docs(default_tree_optimizer):
+    from pathlib import Path
+    populations_df = default_tree_optimizer.genetic_algorithm.population_2_df()
+    out_dir = Path(__file__).resolve().parent
+
+    # Test PNG output (recommended for docs)
+    out_png = out_dir / "search_space_docs.png"
+    fig = plotly_search_space_for_docs(populations_df, output_path=str(out_png))
+    assert fig is not None
+    assert out_png.exists() and out_png.stat().st_size > 0
+    print(f"PNG size: {out_png.stat().st_size / 1024:.1f} KB")
+
+    # Test HTML output with docs optimization
+    out_html = out_dir / "search_space_docs.html"
+    fig = plotly_search_space_for_docs(populations_df, output_path=str(out_html))
+    assert out_html.exists() and out_html.stat().st_size > 0
+    html_size_kb = out_html.stat().st_size / 1024
+    print(f"HTML size: {html_size_kb:.1f} KB")
+    # Docs-optimized HTML should be under 500KB (no embedded ~3MB plotly.js)
+    assert html_size_kb < 500, f"HTML too large: {html_size_kb:.1f} KB"

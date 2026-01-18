@@ -26,16 +26,30 @@ hyperparam_space = HyperparameterSpaceBuilder.get_default_space(estimator_class=
 
 # %%
 # The GeneticSearch class is the main wrapper for the optimization of a machine learning model.
+# Configure genetic algorithm parameters:
+# - generations: Number of evolutionary iterations
+# - population_size: Number of individuals per generation
+# - n_elites: Number of best individuals preserved each generation
+# - seed: Random seed for reproducibility
+# Note: Values reduced for faster documentation builds. For production, use larger values.
+genetic_params = {
+    'generations': 10,
+    'population_size': 20,
+    'n_elites': 2,
+    'seed': 42
+}
+
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 opt = GeneticSearch(
-        estimator_class=DecisionTreeClassifier, hyperparam_space=hyperparam_space,
-        **{"generations": 30, "population_size": 100},
-        # eval_function=kfold_stratified_score, # Deprecated
-        cv=cv
-    )
+    estimator_class=DecisionTreeClassifier,
+    hyperparam_space=hyperparam_space,
+    cv=cv,
+    scoring='accuracy',
+    **genetic_params
+)
 
 # %%
-# To optimizer the classifier we need to call the fit method.
+# To optimize the classifier we need to call the fit method.
 opt.fit(X, y)
 
 
@@ -43,14 +57,17 @@ opt.fit(X, y)
 # We can plot the evolution of the fitness function.
 population_df = opt.populations_
 g_logbook = plotly_logbook(opt.logbook_, population_df)
-plotly.io.show(g_logbook)
+# Make plot responsive for documentation
+g_logbook.update_layout(autosize=True, width=None, height=450)
+plotly.io.show(g_logbook, config={'responsive': True})
 
 # %%
 # Alternatively, we can use the simpler plot_logbook function.
 from mloptimizer.application.reporting.plots import plot_logbook
+import matplotlib.pyplot as plt
 
 g_logbook = plot_logbook(opt.logbook_)
-g_logbook.show()
+plt.show()
 
 # %%
 # At the end of the evolution the graph is saved as an html at the path:

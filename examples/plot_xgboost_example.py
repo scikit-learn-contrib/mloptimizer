@@ -40,25 +40,43 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # %%
-# Define the XGBoost hyperparameter space
-hyperparam_space = HyperparameterSpaceBuilder.get_default_space(
-    estimator_class=xgb.XGBClassifier,
-)
+# Define the XGBoost hyperparameter space using HyperparameterSpaceBuilder
+# -------------------------------------------------------------------------
+# We can build a custom hyperparameter space by adding individual parameters.
+# This gives fine-grained control over the search space for each hyperparameter.
+hyperparam_space = (HyperparameterSpaceBuilder()
+                    .add_int_param('max_depth', min_value=2, max_value=10)
+                    .add_float_param('learning_rate', min_value=10, max_value=30, scale=100)
+                    .add_int_param('n_estimators', min_value=50, max_value=300)
+                    .add_float_param('subsample', min_value=60, max_value=100, scale=100)
+                    .add_float_param('colsample_bytree', min_value=60, max_value=100, scale=100)
+                    .build())
 
 # %%
 # Configure and run the genetic optimization WITH MLFLOW
 # ------------------------------------------------------
-# Create a temporary directory for results
+# Genetic Algorithm Configuration:
+# - generations: Number of evolutionary iterations
+# - population_size: Number of configurations per generation
+# - n_elites: Number of best individuals preserved each generation
+# - seed: Random seed for reproducibility
+# - use_mlflow: Enable MLflow experiment tracking
+# Note: Small values for documentation builds. For production, increase to 20+ generations.
+genetic_params = {
+    'generations': 5,
+    'population_size': 8,
+    'n_elites': 2,
+    'seed': 42,
+    'use_mlflow': True,
+    'use_parallel': False
+}
 
-# Initialize GeneticSearch with use_mlflow=True
 opt = GeneticSearch(
     estimator_class=xgb.XGBClassifier,
     hyperparam_space=hyperparam_space,
-    generations=6,  # Reduced for quick demonstration
-    population_size=10,  # Reduced for quick demonstration
-    seed=42,
-    use_mlflow=True,  # This enables MLflow tracking
-    use_parallel=False # parallel does not work in this example
+    cv=3,
+    scoring='accuracy',
+    **genetic_params
 )
 
 print("Starting XGBoost optimization with MLflow tracking...")
@@ -92,11 +110,12 @@ df_filtered = population_df[top_params]
 g_search_space = plotly_search_space(df_filtered, top_params)
 g_search_space.update_layout(
     title="XGBoost Hyperparameter Search Space - CoverType Dataset",
+    autosize=True,
     width=1000,
-    height=800
+    height=650
 )
-# Show plot
-plotly.io.show(g_search_space)
+# Show plot - responsive for documentation
+plotly.io.show(g_search_space, config={'responsive': True})
 
 # %%
 # Simple logbook visualization
@@ -109,11 +128,12 @@ plt.show()
 g_logbook = plotly_logbook(opt.logbook_, population_df)
 g_logbook.update_layout(
     title="XGBoost Optimization Evolution - CoverType Dataset",
-    width=1000,
-    height=600
+    autosize=True,
+    width=900,
+    height=500
 )
-# Show plot
-plotly.io.show(g_logbook)
+# Show plot - responsive for documentation
+plotly.io.show(g_logbook, config={'responsive': True})
 
 # %%
 # Analyze optimization results

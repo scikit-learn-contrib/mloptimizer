@@ -17,6 +17,7 @@ mloptimizer example optimization of iris dataset comparing hyperparameter tuning
 import pandas as pd
 import numpy as np
 from time import time
+import plotly
 
 from mloptimizer.domain.hyperspace import HyperparameterSpace, Hyperparam
 from mloptimizer.application.reporting.plots import plotly_search_space
@@ -109,6 +110,9 @@ print(f"Dataset: {name}, X shape: {X.shape}, y shape: {y.shape}")
 # - `min_delta`: Minimum change in fitness to be considered an improvement.
 # - `seed`: Random seed for reproducibility.
 # - `use_parallel`: Whether to use parallel evaluation of individuals.
+#
+# Note: Values reduced for faster documentation builds. For production comparison,
+# use generations=20-30 and population_size=20-30 for more robust results.
 
 print(f"2) Genetic Search optimization of XGBoost")
 
@@ -124,15 +128,15 @@ evolvable_hyperparams = {
 hyperparameter_space = HyperparameterSpace(fixed_hyperparams, evolvable_hyperparams)
 
 genetic_params = {
-    'generations': 15,
-    'population_size': 10,
-    'n_elites': 3,
+    'generations': 8,
+    'population_size': 8,
+    'n_elites': 2,
     'tournsize': 3,
     'cxpb': 0.5,
     'mutpb': 0.8,
     'indpb': 0.2,
     'early_stopping': True,
-    'patience': 6,
+    'patience': 4,
     'min_delta': 0.005,
     'seed': 0,
     'use_parallel': False
@@ -156,7 +160,9 @@ population_df = opt.populations_
 print(f"Genetic Search evaluated {population_df.shape[0]} configurations")
 population_df_filtered = population_df[list(hyperparameter_space.evolvable_hyperparams.keys()) + ['fitness']]
 fig_gen = plotly_search_space(population_df_filtered)
-# fig_gen.show(config={'responsive': True})  # Commented out for CLI execution
+# Make plot responsive for documentation
+fig_gen.update_layout(autosize=True, width=1000, height=650)
+plotly.io.show(fig_gen, config={'responsive': True})
 
 # %%
 # 3) Grid Search Optimization for XGBoost
@@ -187,13 +193,14 @@ fig_gen = plotly_search_space(population_df_filtered)
 print(f"3) Grid Search optimization of XGBoost")
 
 xgb = XGBClassifier()
+# Reduced grid for faster documentation builds
 parameters = {
-    'colsample_bytree': (0.3, 0.5, 0.8),
-    'gamma': (5, 20),
-    'learning_rate': (0.001, 0.01, 0.1),
-    'max_depth': (2, 10),
-    'n_estimators': (300,),
-    'subsample': (0.7, 0.8, 0.9)
+    'colsample_bytree': (0.3, 0.6),
+    'gamma': (5, 15),
+    'learning_rate': (0.01, 0.1),
+    'max_depth': (2, 8),
+    'n_estimators': (200,),
+    'subsample': (0.7, 0.9)
 }
 clf_gs = GridSearchCV(
     xgb,
@@ -212,7 +219,9 @@ synth_population_gs = pd.DataFrame(clf_gs.cv_results_['params'])
 synth_population_gs['fitness'] = clf_gs.cv_results_['mean_test_score']
 print(f"Grid Search evaluated {synth_population_gs.shape[0]} configurations")
 fig_gs = plotly_search_space(synth_population_gs)
-# fig_gs.show(config={'responsive': True})  # Commented out for CLI execution
+# Make plot responsive for documentation
+fig_gs.update_layout(autosize=True, width=1000, height=650)
+plotly.io.show(fig_gs, config={'responsive': True})
 
 # %%
 # 4) Random Search Optimization for XGBoost
@@ -242,19 +251,20 @@ fig_gs = plotly_search_space(synth_population_gs)
 
 print(f"4) Random Search optimization of XGBoost")
 
+# Reduced search space for faster documentation builds
 distributions = {
-    'colsample_bytree': np.linspace(0.3, 1, 10),
-    'gamma': (0, 5, 20),
-    'learning_rate': (0.001, 0.01, 0.1),
-    'max_depth': (2, 5, 10, 20),
-    'n_estimators': (100, 300, 500),
-    'subsample': np.linspace(0.7, 0.9, 10)
+    'colsample_bytree': np.linspace(0.3, 1, 8),
+    'gamma': (0, 5, 15),
+    'learning_rate': (0.01, 0.1),
+    'max_depth': (2, 5, 10),
+    'n_estimators': (100, 200, 400),
+    'subsample': np.linspace(0.7, 0.9, 8)
 }
 clf_rs = RandomizedSearchCV(
     xgb,
     distributions,
     cv=cv,
-    n_iter=110,
+    n_iter=30,  # Reduced from 110 for faster builds
     random_state=0,
     scoring="balanced_accuracy"
 )
@@ -269,7 +279,9 @@ synth_population_rs = pd.DataFrame(clf_rs.cv_results_['params'])
 synth_population_rs['fitness'] = clf_rs.cv_results_['mean_test_score']
 print(f"Random Search evaluated {synth_population_rs.shape[0]} configurations")
 fig_rs = plotly_search_space(synth_population_rs)
-# fig_rs.show(config={'responsive': True})  # Commented out for CLI execution
+# Make plot responsive for documentation
+fig_rs.update_layout(autosize=True, width=1000, height=650)
+plotly.io.show(fig_rs, config={'responsive': True})
 
 # %%
 # 5) Bayesian Optimization for XGBoost
@@ -317,10 +329,10 @@ def objective_function(params):
 
 
 trials = Trials()
-num_eval = 110
+num_eval = 30  # Reduced from 110 for faster documentation builds
 
 t0_bay = time()
-fmin(objective_function, bayesian_space, algo=tpe.suggest, max_evals=num_eval, trials=trials)
+fmin(objective_function, bayesian_space, algo=tpe.suggest, max_evals=num_eval, trials=trials, verbose=0)
 t1_bay = time()
 execution_time_bay = round(t1_bay - t0_bay, 2)
 print(f"Time of the Bayesian Optimization: {execution_time_bay} s")
@@ -334,7 +346,9 @@ synth_population_bay['fitness'] = scores_list
 synth_population_bay.columns = [col.replace('vals_', '') for col in synth_population_bay.columns]
 print(f"Bayesian Optimization evaluated {num_eval} configurations")
 fig_bay = plotly_search_space(synth_population_bay)
-# fig_bay.show(config={'responsive': True})  # Commented out for CLI execution
+# Make plot responsive for documentation
+fig_bay.update_layout(autosize=True, width=1000, height=650)
+plotly.io.show(fig_bay, config={'responsive': True})
 
 # %%
 # Summary Table
