@@ -140,7 +140,10 @@ plotly.io.show(g_logbook, config={'responsive': True})
 # %%
 # Analyze optimization results
 print("\n=== Optimization Analysis ===")
-print(f"Total evaluations: {len(population_df)}")
+print(f"Unique evaluations performed: {opt.n_trials_}")
+print(f"Total individuals in population history: {len(population_df)}")
+print(f"Optimization time: {opt.optimization_time_:.4f} seconds")
+print(f"Time per evaluation: {opt.optimization_time_ / opt.n_trials_:.4f} seconds")
 print(f"Generations completed: {opt.generations}")
 
 final_gen = population_df[population_df['population'] == opt.generations]

@@ -91,3 +91,11 @@ g_logbook.update_layout(
     height=500
 )
 plotly.io.show(g_logbook, config={'responsive': True})
+
+# %%
+# Analyze optimization performance
+print("\n=== Optimization Performance ===")
+print(f"Unique evaluations performed: {opt.n_trials_}")
+print(f"Total individuals in population history: {len(opt.populations_)}")
+print(f"Optimization time: {opt.optimization_time_:.4f} seconds")
+print(f"Time per evaluation: {opt.optimization_time_ / opt.n_trials_:.4f} seconds")
