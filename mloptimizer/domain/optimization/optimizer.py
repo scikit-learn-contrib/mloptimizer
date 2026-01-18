@@ -270,16 +270,45 @@ class Optimizer:
         """
         #from mloptimizer.domain.optimization import DeapOptimizer, GeneticAlgorithmRunner
         from mloptimizer.domain.optimization import GeneticAlgorithm
-        # Log initialization
-        self.tracker.start_optimization(type(self).__name__, generations=generations)
+        # Log initialization with enhanced info
+        self.tracker.start_optimization(
+            type(self).__name__,
+            generations=generations,
+            population_size=population_size,
+            estimator_class=self.estimator_class
+        )
 
         # Creation of folders and checkpoint
         self.tracker.start_checkpoint(opt_run_folder_name, estimator_class=self.estimator_class)
 
         # Log dataset
         self.tracker.log_dataset(self.features, self.labels)
+
         # Log genetic parameters
         self.tracker.log_genetic_params(self.genetic_params)
+
+        # Log comprehensive optimization configuration (Phase 1 MLflow improvement)
+        if self.tracker.use_mlflow:
+            config = {
+                'estimator_class': self.estimator_class.__name__,
+                'population_size': population_size,
+                'generations': generations,
+                'early_stopping': self.early_stopping,
+                'patience': self.patience if self.early_stopping else None,
+                'min_delta': self.min_delta if self.early_stopping else None,
+                'use_parallel': self.use_parallel,
+                'n_evolvable_params': len(self.hyperparam_space.evolvable_hyperparams),
+                'evolvable_params': list(self.hyperparam_space.evolvable_hyperparams.keys()),
+            }
+            self.tracker.log_optimization_config(config)
+
+            # Set comprehensive tags (Phase 1 MLflow improvement)
+            tags = {
+                'estimator_class': self.estimator_class.__name__,
+                'mloptimizer_version': '0.9.4',  # TODO: Get from package
+                'optimization_algorithm': 'genetic_algorithm',
+            }
+            self.tracker.set_optimization_tags(tags)
 
         # Creation of deap optimizer
         #self.deap_optimizer = DeapOptimizer(hyperparam_space=self.hyperparam_space, seed=self.mlopt_seed,
@@ -322,7 +351,16 @@ class Optimizer:
         # Log and save results
         # self._log_and_save_results(hof)
 
-        # End optimization, if MLflow is used, parent run is ended
-        self.tracker.end_optimization()
+        # Calculate final statistics
+        best_fitness = hof[0].fitness.values[0] if hof else None
+        total_evaluations = sum(record['nevals'] for record in logbook) if logbook else None
+
+        # End optimization with comprehensive summary (Phase 1 MLflow improvement)
+        self.tracker.end_optimization(
+            best_fitness=best_fitness,
+            total_evaluations=total_evaluations,
+            stopped_early=self.genetic_algorithm.stopped_early_,
+            stopped_at_generation=self.genetic_algorithm.generations_run_
+        )
 
         return self.individual_utils.get_clf(hof[0])

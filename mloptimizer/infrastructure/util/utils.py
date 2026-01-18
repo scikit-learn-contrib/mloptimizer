@@ -35,19 +35,26 @@ def init_logger(filename='mloptimizer.log', log_path=".", debug=False, file_outp
     custom_logger = logging.getLogger(filename)
     custom_logger.setLevel(log_level)
 
-    # Create logger formatter
-    log_format = (
-        "%(asctime)s [%(levelname)s]: %(message)s in %(pathname)s:%(lineno)d")
+    # Create logger formatters
+    # DEBUG mode: show file path and line number for troubleshooting
+    # INFO mode: clean output without file paths
+    if debug:
+        log_format = "%(asctime)s [%(levelname)s]: %(message)s in %(pathname)s:%(lineno)d"
+    else:
+        log_format = "%(asctime)s [%(levelname)s]: %(message)s"
     logger_formatter = logging.Formatter(log_format)
 
     # Create file handler only if file output is enabled
+    # File handler always uses DEBUG format with full details
     if file_output:
+        file_log_format = "%(asctime)s [%(levelname)s]: %(message)s in %(pathname)s:%(lineno)d"
+        file_formatter = logging.Formatter(file_log_format)
         file_handler = logging.FileHandler(logfile_path)
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logger_formatter)
+        file_handler.setFormatter(file_formatter)
         custom_logger.addHandler(file_handler)
 
-    # Console handler - set to INFO level so messages are visible
+    # Console handler - uses clean format unless DEBUG mode
     console_handler = logging.StreamHandler()
     console_handler.setLevel(log_level)
     console_handler.setFormatter(logger_formatter)

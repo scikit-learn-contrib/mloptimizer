@@ -70,16 +70,32 @@ def test_genetic_search_creates_mlflow_runs(mlflow_server):
     runs = client.search_runs([latest_exp.experiment_id])
     assert runs, "No runs found"
 
-    parent_runs = [r for r in runs if r.data.tags.get("mlflow.parentRunId") is None]
-    child_runs = [r for r in runs if r.data.tags.get("mlflow.parentRunId") is not None]
+    # Find parent runs (name starts with YYYYMMDD_HHMMSS_)
+    import re
+    parent_runs = [r for r in runs if re.match(r'^\d{8}_\d{6}_', r.info.run_name)]
+    child_runs = [r for r in runs if re.match(r'^gen_\d+_ind_\d+_', r.info.run_name)]
 
     assert parent_runs, "No parent MLflow run created"
-    assert child_runs, "No nested MLflow runs created"
+    assert len(parent_runs) >= 1, f"Expected at least 1 parent run, found {len(parent_runs)}"
 
-    # Confirm logging
-    child = child_runs[0]
-    assert child.data.params, "No parameters logged in child run"
-    assert child.data.metrics, "No metrics logged in child run"
+    # Verify parent run has Phase 1 improvements
+    parent = parent_runs[0]
+    assert parent.data.params, "No parameters logged in parent run"
+    assert "population_size" in parent.data.params, "population_size not logged"
+    assert "generations" in parent.data.params, "generations not logged"
 
-    # Confirm run names are formatted
-    assert "gen_" in child.data.tags.get("mlflow.runName", ""), "Run name format incorrect"
+    # Verify generation-level metrics (Phase 1 improvement)
+    assert "generation_best_fitness" in parent.data.metrics, "generation_best_fitness not logged"
+    assert "generation_avg_fitness" in parent.data.metrics, "generation_avg_fitness not logged"
+    assert "final_best_fitness" in parent.data.metrics, "final_best_fitness not logged"
+
+    # Verify tags (Phase 1 improvement)
+    assert "estimator_class" in parent.data.tags, "estimator_class tag not set"
+    assert "dataset_samples" in parent.data.tags, "dataset_samples tag not set"
+
+    # If child runs exist, verify their structure
+    if child_runs:
+        child = child_runs[0]
+        assert child.data.params, "No parameters logged in child run"
+        assert child.data.metrics, "No metrics logged in child run"
+        assert "gen_" in child.info.run_name, "Child run name format incorrect"

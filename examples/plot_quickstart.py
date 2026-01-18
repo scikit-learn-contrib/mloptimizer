@@ -49,7 +49,7 @@ opt = GeneticSearch(
 
 # %%
 # To optimize the classifier we need to call the fit method.
-# The method finds the best hyperparameters and stores them in best_estimator_.
+# The method finds the best hyperparameters and stores them in ``best_estimator_``.
 opt.fit(X, y)
 
 print(opt.best_estimator_)

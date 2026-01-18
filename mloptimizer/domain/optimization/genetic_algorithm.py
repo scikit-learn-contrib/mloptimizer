@@ -154,7 +154,7 @@ class GeneticAlgorithm:
 
                 self.toolbox.register("map", joblib_map)
                 if self.tracker:
-                    self.tracker.info("Parallelization enabled using joblib with loky backend")
+                    self.tracker.optimization_logger.debug("Parallelization enabled using joblib with loky backend")
             except ImportError:
                 print("joblib not available, falling back to sequential execution")
                 self.use_parallel = False
@@ -347,6 +347,11 @@ class GeneticAlgorithm:
         halloffame.update(population)
         record = stats.compile(population) if stats else {}
         logbook.record(gen=0, nevals=len(invalid_ind), **record)
+
+        # Log generation 0 metrics to MLflow (Phase 1 improvement)
+        if self.tracker:
+            self.tracker.log_generation_metrics(0, record)
+
         self.populations.append([[ind, ind.fitness] for ind in population])
 
         for gen in range(max(1, start_gen), ngen + 1):
@@ -383,6 +388,10 @@ class GeneticAlgorithm:
             record = stats.compile(population) if stats else {}
             logbook.record(gen=gen, nevals=len(invalid_ind), **record)
 
+            # Log generation metrics to MLflow (Phase 1 improvement)
+            if self.tracker:
+                self.tracker.log_generation_metrics(gen, record)
+
             self.populations.append([[ind, ind.fitness] for ind in population])
 
             if checkpoint_path and not self.tracker.disable_file_output:
@@ -405,7 +414,13 @@ class GeneticAlgorithm:
 
             if early_stopping and no_improve >= patience:
                 self.generations_run_ = gen
-                self.tracker.info(f"Early stopping at generation {gen} with best fitness: {best_fitness}")
+                self.tracker.optimization_logger.info("="*70)
+                self.tracker.optimization_logger.info(f"⚠️  Early Stopping Triggered")
+                self.tracker.optimization_logger.info(f"  Generation: {gen}/{ngen}")
+                self.tracker.optimization_logger.info(f"  Best fitness: {best_fitness:.6f}")
+                self.tracker.optimization_logger.info(f"  No improvement for {no_improve} generations (patience={patience})")
+                self.tracker.optimization_logger.info(f"  Stopping optimization early to avoid wasted evaluations")
+                self.tracker.optimization_logger.info("="*70)
                 self.stopped_early_ = True
                 break
 

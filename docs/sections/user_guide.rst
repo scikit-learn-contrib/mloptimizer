@@ -12,3 +12,4 @@ User Guide
    Quickstart/index
    Results/index
    Advanced/index
+   MLflow/index

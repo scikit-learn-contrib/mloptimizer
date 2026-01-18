@@ -76,6 +76,7 @@ opt = GeneticSearch(
     hyperparam_space=hyperparam_space,
     cv=3,
     scoring='accuracy',
+    disable_file_output=False,
     **genetic_params
 )
 

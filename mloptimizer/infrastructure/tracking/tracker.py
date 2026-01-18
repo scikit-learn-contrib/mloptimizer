@@ -69,9 +69,27 @@ class Tracker:
         self.best_fitness = None
 
         if self.use_mlflow:
-            self.mlflow = importlib.import_module("mlflow")
+            try:
+                self.mlflow = importlib.import_module("mlflow")
+            except ImportError as e:
+                error_msg = (
+                    "\n" + "="*70 + "\n"
+                    "ERROR: MLflow not installed but use_mlflow=True\n"
+                    "="*70 + "\n"
+                    "MLflow is required when use_mlflow=True but is not installed.\n\n"
+                    "To install MLflow, run:\n"
+                    "  pip install mlflow\n\n"
+                    "Or disable MLflow tracking:\n"
+                    "  GeneticSearch(..., use_mlflow=False)\n"
+                    + "="*70
+                )
+                self.mloptimizer_logger.error(error_msg)
+                raise ImportError(
+                    "MLflow is required when use_mlflow=True. "
+                    "Install it with: pip install mlflow"
+                ) from e
 
-    def start_optimization(self, opt_class, generations: int):
+    def start_optimization(self, opt_class, generations: int, population_size=None, estimator_class=None):
         """
         Start the optimization process.
 
@@ -81,32 +99,109 @@ class Tracker:
             Name of the optimization class.
         generations : int
             Number of generations for the optimization process.
+        population_size : int, optional
+            Size of the population for the genetic algorithm.
+        estimator_class : class, optional
+            The estimator class being optimized.
         """
-        # Inform the user that the optimization is starting
-        self.mloptimizer_logger.info(f"Initiating genetic optimization...")
-        # self.mloptimizer_logger.info("Algorithm: {}".format(type(self).__name__))
-        self.mloptimizer_logger.info(f"Algorithm: {opt_class}")
+        # Store for later use in logging and MLflow
+        self.total_generations = generations
+        self.population_size = population_size or 0
+        self.estimator_class = estimator_class
+        self.optimization_start_time = datetime.now()
+
+        # Inform the user that the optimization is starting with detailed info
+        self.mloptimizer_logger.info("="*70)
+        self.mloptimizer_logger.info("Starting Genetic Algorithm Optimization")
+        self.mloptimizer_logger.info("="*70)
+        self.mloptimizer_logger.info(f"  Optimizer: {opt_class}")
+        if estimator_class:
+            self.mloptimizer_logger.info(f"  Estimator: {estimator_class.__name__}")
+        if population_size:
+            self.mloptimizer_logger.info(f"  Population size: {population_size}")
+        self.mloptimizer_logger.info(f"  Max generations: {generations}")
+        if self.use_parallel:
+            self.mloptimizer_logger.info(f"  Parallelization: Enabled (joblib with loky backend)")
+        else:
+            self.mloptimizer_logger.info(f"  Parallelization: Disabled (sequential execution)")
+        if self.use_mlflow:
+            self.mloptimizer_logger.info(f"  MLflow tracking: Enabled")
+        self.mloptimizer_logger.info("="*70)
 
         # tqdm is not compatible with parallel execution
         if not self.use_parallel:
             self._init_progress_bar(generations)
 
 
-    def end_optimization(self):
+    def end_optimization(self, best_fitness=None, total_evaluations=None, stopped_early=False, stopped_at_generation=None):
         """
         Ends the optimization process by finalizing any active MLflow runs.
+
+        Parameters
+        ----------
+        best_fitness : float, optional
+            Best fitness achieved during optimization
+        total_evaluations : int, optional
+            Total number of evaluations performed
+        stopped_early : bool, optional
+            Whether early stopping was triggered
+        stopped_at_generation : int, optional
+            Generation at which optimization stopped
 
         Raises
         ------
         Exception
             If there is an error while ending the MLflow run.
         """
+        # Calculate optimization time
+        if hasattr(self, 'optimization_start_time'):
+            duration = (datetime.now() - self.optimization_start_time).total_seconds()
+        else:
+            duration = None
+
+        # Log final summary
+        self.mloptimizer_logger.info("="*70)
+        self.mloptimizer_logger.info("Optimization Complete")
+        self.mloptimizer_logger.info("="*70)
+        if best_fitness is not None:
+            self.mloptimizer_logger.info(f"  Best fitness achieved: {best_fitness:.6f}")
+        if total_evaluations is not None:
+            self.mloptimizer_logger.info(f"  Total evaluations: {total_evaluations}")
+        if stopped_early:
+            self.mloptimizer_logger.info(f"  Early stopping: Yes (stopped at generation {stopped_at_generation})")
+        if duration is not None:
+            self.mloptimizer_logger.info(f"  Optimization time: {duration:.2f} seconds")
+        self.mloptimizer_logger.info("="*70)
+
+        # Log final tags to MLflow
+        if self.use_mlflow and best_fitness is not None:
+            try:
+                final_tags = {}
+                if stopped_early:
+                    final_tags['early_stopped'] = 'True'
+                    if stopped_at_generation is not None:
+                        final_tags['stopped_at_generation'] = str(stopped_at_generation)
+                if total_evaluations is not None:
+                    final_tags['total_evaluations'] = str(total_evaluations)
+                if duration is not None:
+                    final_tags['optimization_time_seconds'] = f"{duration:.2f}"
+
+                if final_tags:
+                    self.mlflow.set_tags(final_tags)
+
+                # Log final metric
+                self.mlflow.log_metric('final_best_fitness', best_fitness)
+
+            except Exception as e:
+                self.optimization_logger.warning(f"Failed to log final tags/metrics: {e}")
+
+        # Close MLflow run
         if self.use_mlflow and self.parent_run is not None:
             try:
                 self.mlflow.end_run()
-                self.optimization_logger.info("Closed parent MLflow run.")
+                self.optimization_logger.debug("MLflow run closed successfully")
             except Exception as e:
-                self.optimization_logger.exception("Error closing parent MLflow run: %s", e)
+                self.optimization_logger.exception("Error closing MLflow run: %s", e)
             finally:
                 self.parent_run = None
 
@@ -124,13 +219,13 @@ class Tracker:
                 self.mlflow.set_experiment(self.name)
                 exp = self.mlflow.get_experiment_by_name(self.name)
                 if exp is not None:
-                    self.optimization_logger.info("Using MLflow experiment: %s id=%s", exp.name, exp.experiment_id)
+                    self.optimization_logger.debug("📊 MLflow Experiment: '%s' (ID: %s)", exp.name, exp.experiment_id)
                 else:
-                    self.optimization_logger.warning("MLflow set_experiment did not return an experiment for %s", self.name)
+                    self.optimization_logger.warning("MLflow experiment '%s' could not be retrieved", self.name)
             except Exception as e:
-                self.optimization_logger.exception("Failed to set/get MLflow experiment %s: %s", self.name, e)
+                self.optimization_logger.exception("Failed to initialize MLflow experiment '%s': %s", self.name, e)
         except Exception as fatal:
-            self.optimization_logger.exception("Unexpected error when starting MLflow checkpoint: %s", fatal)
+            self.optimization_logger.exception("Critical error starting MLflow experiment: %s", fatal)
             raise
 
     def start_mlflow_run(self, run_name: str):
@@ -168,12 +263,12 @@ class Tracker:
             # Intentar iniciar un nuevo run normalmente
             try:
                 self.parent_run = self.mlflow.start_run(run_name=run_name)
-                self.optimization_logger.info("Started MLflow run: run_id=%s", self.parent_run.info.run_id)
+                self.optimization_logger.debug("✅ MLflow Run Started: '%s' (ID: %s)", run_name, self.parent_run.info.run_id)
             except Exception as e:
-                self.optimization_logger.exception("start_run failed, retrying with nested=True: %s", e)
+                self.optimization_logger.exception("Failed to start MLflow run, retrying with nested=True: %s", e)
                 # Reintentar como nested run para no chocar con runs globales que no se pueden cerrar
                 self.parent_run = self.mlflow.start_run(run_name=run_name, nested=True)
-                self.optimization_logger.info("Started nested MLflow run: run_id=%s", self.parent_run.info.run_id)
+                self.optimization_logger.debug("✅ MLflow Nested Run Started: '%s' (ID: %s)", run_name, self.parent_run.info.run_id)
 
         except Exception as fatal:
             self.optimization_logger.exception("Unexpected error when starting MLflow checkpoint: %s", fatal)
@@ -241,11 +336,34 @@ class Tracker:
 
 
     def log_dataset(self, X, y):
+        """Log dataset information to MLflow with comprehensive metadata."""
         if self.use_mlflow:
-            df_dataset = pd.DataFrame(X)
-            df_dataset["label"] = y
-            dataset = self.mlflow.data.from_pandas(df_dataset)
-            self.mlflow.log_input(dataset, context="training")
+            try:
+                # Log dataset
+                df_dataset = pd.DataFrame(X)
+                df_dataset["label"] = y
+                dataset = self.mlflow.data.from_pandas(df_dataset)
+                self.mlflow.log_input(dataset, context="training")
+
+                # Log dataset metadata as tags
+                import numpy as np
+                n_samples, n_features = X.shape
+                n_classes = len(np.unique(y)) if y is not None else 0
+
+                dataset_tags = {
+                    'dataset_samples': str(n_samples),
+                    'dataset_features': str(n_features),
+                    'dataset_classes': str(n_classes) if n_classes > 0 else 'regression',
+                }
+                self.mlflow.set_tags(dataset_tags)
+
+                self.optimization_logger.debug(
+                    f"📊 Dataset logged: {n_samples} samples, {n_features} features"
+                    + (f", {n_classes} classes" if n_classes > 1 else "")
+                )
+
+            except Exception as e:
+                self.optimization_logger.warning(f"Failed to log dataset: {e}")
 
     def log_clfs(self, classifiers_list: list, generation: int, fitness_list: list[float]):
         self.gen = generation
@@ -379,8 +497,105 @@ class Tracker:
         # self.pbar.refresh()
 
     def log_genetic_params(self, genetic_params):
+        """Log genetic algorithm parameters to MLflow."""
         if self.use_mlflow:
+            # Log all genetic params
             self.mlflow.log_params(genetic_params)
+            self.optimization_logger.debug(f"Logged {len(genetic_params)} genetic algorithm parameters to MLflow")
+
+    def log_generation_metrics(self, generation, stats_record):
+        """
+        Log generation-level metrics to MLflow.
+
+        This implements Phase 1 of the MLflow improvement plan by logging
+        population statistics per generation.
+
+        Parameters
+        ----------
+        generation : int
+            Current generation number
+        stats_record : dict
+            Statistics for this generation (min, max, avg, std, etc.)
+        """
+        if not self.use_mlflow:
+            return
+
+        try:
+            metrics = {}
+
+            # Core fitness metrics
+            if 'max' in stats_record:
+                metrics['generation_best_fitness'] = stats_record['max']
+            if 'avg' in stats_record:
+                metrics['generation_avg_fitness'] = stats_record['avg']
+            if 'min' in stats_record:
+                metrics['generation_worst_fitness'] = stats_record['min']
+            if 'std' in stats_record:
+                metrics['generation_fitness_std'] = stats_record['std']
+            if 'med' in stats_record:
+                metrics['generation_median_fitness'] = stats_record['med']
+
+            # Log with generation as step for time-series view
+            if metrics:
+                self.mlflow.log_metrics(metrics, step=generation)
+
+                # Log progress message
+                best = stats_record.get('max', 0)
+                avg = stats_record.get('avg', 0)
+                self.optimization_logger.info(
+                    f"Generation {generation}/{self.total_generations}: "
+                    f"Best={best:.4f}, Avg={avg:.4f}, "
+                    f"Evaluations={stats_record.get('nevals', 0)}"
+                )
+
+        except Exception as e:
+            self.optimization_logger.warning(f"Failed to log generation metrics: {e}")
+
+    def log_optimization_config(self, config_dict):
+        """
+        Log comprehensive optimization configuration to MLflow.
+
+        Parameters
+        ----------
+        config_dict : dict
+            Configuration dictionary with all optimization settings
+        """
+        if not self.use_mlflow:
+            return
+
+        try:
+            # Flatten nested config if needed and log as params
+            flat_config = {}
+            for key, value in config_dict.items():
+                if isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        flat_config[f"{key}_{sub_key}"] = sub_value
+                else:
+                    flat_config[key] = value
+
+            self.mlflow.log_params(flat_config)
+            self.optimization_logger.debug(f"Logged {len(flat_config)} configuration parameters to MLflow")
+
+        except Exception as e:
+            self.optimization_logger.warning(f"Failed to log configuration: {e}")
+
+    def set_optimization_tags(self, tags_dict):
+        """
+        Set comprehensive tags for the optimization run.
+
+        Parameters
+        ----------
+        tags_dict : dict
+            Dictionary of tags to set for this run
+        """
+        if not self.use_mlflow:
+            return
+
+        try:
+            self.mlflow.set_tags(tags_dict)
+            self.optimization_logger.debug(f"Set {len(tags_dict)} MLflow tags")
+        except Exception as e:
+            self.optimization_logger.warning(f"Failed to set tags: {e}")
 
     def info(self, msg):
         """

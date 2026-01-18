@@ -55,7 +55,7 @@ mlopt = GeneticSearch(
 mlopt.fit(X, y)
 clf = mlopt.best_estimator_
 # %%
-# The best estimator with optimized hyperparameters is stored in best_estimator_.
+# The best estimator with optimized hyperparameters is stored in ``best_estimator_``.
 # This estimator is trained with the best hyperparameters found during optimization.
 # As the literature suggests, you can retrain with all the data or use cross-validation
 # estimators for making predictions with better generalization.

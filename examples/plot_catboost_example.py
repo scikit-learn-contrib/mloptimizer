@@ -78,6 +78,7 @@ opt = GeneticSearch(
     hyperparam_space=hyperparam_space,
     cv=3,
     scoring='accuracy',
+    disable_file_output=False,
     **genetic_params
 )
 
@@ -180,7 +181,7 @@ if os.path.exists(results_path):
 # - **Automatic handling of categorical features**: No need for manual encoding
 # - **Balanced class weights**: Set via auto_class_weights='Balanced' (included in default space)
 # - **GPU acceleration**: Add 'task_type': 'GPU' to fixed parameters
-# - **Feature importance**: Access via best_clf.feature_importances_
+# - **Feature importance**: Access via ``best_clf.feature_importances_``
 #
 # Example of adding categorical feature support:
 #
