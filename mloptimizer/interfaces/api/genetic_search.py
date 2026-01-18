@@ -2,6 +2,7 @@ import warnings
 from mloptimizer.domain.evaluation import train_score
 from mloptimizer.application import OptimizerService, HyperparameterSpaceService
 import random
+import time
 from sklearn.model_selection import StratifiedKFold, KFold, BaseCrossValidator
 from mloptimizer.domain.evaluation import make_crossval_eval
 from sklearn.base import is_classifier
@@ -54,6 +55,14 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
 
     use_mlflow : bool, optional (default=False)
         If True, the optimization process will be tracked using MLFlow. Default is False.
+
+    disable_file_output : bool, optional (default=False)
+        If True, disables all file and directory creation during optimization. This includes:
+        - Log files, checkpoint files, progress files
+        - Result CSVs (logbook, populations)
+        - Visualization plots (HTML, PNG)
+        - Output directories
+        Note: MLflow tracking (if use_mlflow=True) will still function.
 
     early_stopping : bool, optional (default=False)
         If True, the optimization will stop early if no improvement is observed in the fitness score.
@@ -108,12 +117,21 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
     cv_results_ : list of dicts
         A log of the optimization progress, containing details such as fitness scores and hyperparameters
         evaluated during each generation.
+
+    n_trials_ : int
+        Total number of hyperparameter configurations evaluated during optimization.
+        This is useful for comparing computational cost with GridSearch.
+
+    optimization_time_ : float
+        Total time (in seconds) spent on the optimization process.
+        This excludes the final refit on the full training set.
     """
     _required_parameters = ["estimator_class"]
 
     def __init__(self, estimator_class, hyperparam_space, eval_function: callable = None,
                  seed=None, scoring=None, use_parallel=False,
-                 cv=None, use_mlflow=False, early_stopping=False, patience=5, min_delta=0.01,
+                 cv=None, use_mlflow=False, disable_file_output=False,
+                 early_stopping=False, patience=5, min_delta=0.01,
                  generations=20, population_size=20, cxpb=0.5, mutpb=0.8,
                  n_elites=3, tournsize=3, indpb=0.2,
                  initial_params=None, include_default=True):
@@ -130,6 +148,7 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
         self.scoring = scoring
         self.use_parallel = use_parallel
         self.use_mlflow = use_mlflow
+        self.disable_file_output = disable_file_output
 
         self.generations = generations
         self.population_size = population_size
@@ -324,6 +343,7 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
             seed=self.seed,
             use_parallel=self.use_parallel,
             use_mlflow=self.use_mlflow,
+            disable_file_output=self.disable_file_output,
             early_stopping=self.early_stopping,
             patience=self.patience,
             min_delta=self.min_delta,
@@ -331,8 +351,16 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
             include_default=self.include_default
         )
 
+        # Start timing the optimization
+        start_time = time.time()
+
         # Perform optimization via the optimizer service
         estimator_with_best_params = self._optimizer_service.optimize(X, y)
+
+        # End timing (before final refit)
+        self.optimization_time_ = time.time() - start_time
+
+        # Final refit on full training set
         self.best_estimator_ = estimator_with_best_params.fit(X, y)
 
         # Extract best hyperparameters from the optimizer service
@@ -346,6 +374,11 @@ class GeneticSearch(MetaEstimatorMixin, BaseEstimator):
 
         # Store population df
         self.populations_ = self._optimizer_service.optimizer.genetic_algorithm.population_2_df()
+
+        # Count total number of trials (sum of actual evaluations from logbook)
+        # The logbook tracks 'nevals' per generation, which is the count of individuals
+        # that were actually evaluated (excluding those with cached fitness from elitism)
+        self.n_trials_ = sum(record['nevals'] for record in self.logbook_)
 
         return self
 
