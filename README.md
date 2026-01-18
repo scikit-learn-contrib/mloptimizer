@@ -21,12 +21,19 @@ The genetic algorithm used in mloptimizer provides an efficient and flexible app
 - Default hyperparameter ranges
 - Default score functions for evaluating the performance of the model
 - Reproducibility of results
+- Early stopping to prevent overfitting
+- Population seeding with known good configurations
+- Performance tracking (trials count, optimization time)
+- Zero file output mode for cleaner workflows (enabled by default)
 
 ## Advanced Features
 - Extensible with more machine learning algorithms that comply with the Scikit-Learn API
 - Customizable hyperparameter ranges
 - Customizable score functions
 - Optional mlflow compatibility for tracking the optimization process
+- Generation-level MLflow tracking with nested runs
+- Responsive Plotly visualizations with WebGL acceleration
+- Joblib-based parallelization for better compatibility
 
 ## Installation
 
@@ -67,17 +74,24 @@ X, y = load_iris(return_X_y=True)
 hyperparameter_space = HyperparameterSpaceBuilder.get_default_space(DecisionTreeClassifier)
 
 # 3) Create the optimizer and optimize the classifier
-# - 10 generations starting with a population of 10 individuals, other parameters are set to default
+opt = GeneticSearch(
+    estimator_class=DecisionTreeClassifier,
+    hyperparam_space=hyperparameter_space,
+    generations=10,
+    population_size=20,
+    early_stopping=True,        # Stop early if no improvement
+    patience=3,                  # Wait 3 generations
+    cv=5,                        # 5-fold cross-validation
+    seed=42                      # Reproducibility
+)
 
-opt = GeneticSearch(estimator_class=DecisionTreeClassifier,
-                    hyperparam_space=hyperparameter_space,
-                    **{"generations": 5, "population_size": 5}
-                    )
-
-# 4) Optimize the classifier, the optimization returns the best estimator found in the optimization process
+# 4) Optimize (no files created by default)
 opt.fit(X, y)
 
-print(opt.best_estimator_)
+# Access results
+print(f"Best score: {opt.best_estimator_.score(X, y)}")
+print(f"Trials evaluated: {opt.n_trials_}")
+print(f"Time taken: {opt.optimization_time_:.2f}s")
 ```
 Other algorithms can be used, such as `RandomForestClassifier` or `XGBClassifier` which have a 
 default hyperparameter space defined in the library.
@@ -96,8 +110,14 @@ Examples can be found in [examples](https://mloptimizer.readthedocs.io/en/master
 The following dependencies are used in `mloptimizer`:
 
 * [Deap](https://github.com/DEAP/deap) - Genetic Algorithms
-* [XGBoost](https://github.com/dmlc/xgboost) - Gradient boosting classifier
+* [XGBoost](https://github.com/dmlc/xgboost) - Gradient boosting framework
+* [CatBoost](https://catboost.ai/) - Gradient boosting framework
+* [LightGBM](https://lightgbm.readthedocs.io/) - Gradient boosting framework
 * [Scikit-Learn](https://github.com/scikit-learn/scikit-learn) - Machine learning algorithms and utilities
+* [Plotly](https://plotly.com/python/) - Interactive visualizations
+* [Seaborn](https://seaborn.pydata.org/) - Statistical visualizations
+* [joblib](https://joblib.readthedocs.io/) - Parallel processing
+* [tqdm](https://github.com/tqdm/tqdm) - Progress bars
 
 Optional:
 * [Keras](https://keras.io) - Deep learning library
