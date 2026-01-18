@@ -57,7 +57,6 @@ opt.fit(X, y)
 # We can plot the evolution of the fitness function.
 population_df = opt.populations_
 g_logbook = plotly_logbook(opt.logbook_, population_df)
-# Make plot responsive for documentation
 g_logbook.update_layout(autosize=True, width=None, height=450)
 plotly.io.show(g_logbook, config={'responsive': True})
 

@@ -160,8 +160,7 @@ population_df = opt.populations_
 print(f"Genetic Search evaluated {population_df.shape[0]} configurations")
 population_df_filtered = population_df[list(hyperparameter_space.evolvable_hyperparams.keys()) + ['fitness']]
 fig_gen = plotly_search_space(population_df_filtered)
-# Make plot responsive for documentation
-fig_gen.update_layout(autosize=True, width=1000, height=650)
+fig_gen.update_layout(autosize=True, width=None, height=650)
 plotly.io.show(fig_gen, config={'responsive': True})
 
 # %%
@@ -219,8 +218,7 @@ synth_population_gs = pd.DataFrame(clf_gs.cv_results_['params'])
 synth_population_gs['fitness'] = clf_gs.cv_results_['mean_test_score']
 print(f"Grid Search evaluated {synth_population_gs.shape[0]} configurations")
 fig_gs = plotly_search_space(synth_population_gs)
-# Make plot responsive for documentation
-fig_gs.update_layout(autosize=True, width=1000, height=650)
+fig_gs.update_layout(autosize=True, width=None, height=650)
 plotly.io.show(fig_gs, config={'responsive': True})
 
 # %%
@@ -279,8 +277,7 @@ synth_population_rs = pd.DataFrame(clf_rs.cv_results_['params'])
 synth_population_rs['fitness'] = clf_rs.cv_results_['mean_test_score']
 print(f"Random Search evaluated {synth_population_rs.shape[0]} configurations")
 fig_rs = plotly_search_space(synth_population_rs)
-# Make plot responsive for documentation
-fig_rs.update_layout(autosize=True, width=1000, height=650)
+fig_rs.update_layout(autosize=True, width=None, height=650)
 plotly.io.show(fig_rs, config={'responsive': True})
 
 # %%
@@ -346,8 +343,7 @@ synth_population_bay['fitness'] = scores_list
 synth_population_bay.columns = [col.replace('vals_', '') for col in synth_population_bay.columns]
 print(f"Bayesian Optimization evaluated {num_eval} configurations")
 fig_bay = plotly_search_space(synth_population_bay)
-# Make plot responsive for documentation
-fig_bay.update_layout(autosize=True, width=1000, height=650)
+fig_bay.update_layout(autosize=True, width=None, height=650)
 plotly.io.show(fig_bay, config={'responsive': True})
 
 # %%

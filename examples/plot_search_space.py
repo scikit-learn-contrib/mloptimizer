@@ -68,8 +68,7 @@ param_names = list(opt.get_evolvable_hyperparams().keys())
 param_names.append("fitness")
 df = population_df[param_names]
 g_search_space = plotly_search_space(df, param_names)
-# Make plot responsive for documentation
-g_search_space.update_layout(autosize=True, width=1000, height=600)
+g_search_space.update_layout(autosize=True, width=None, height=600)
 plotly.io.show(g_search_space, config={'responsive': True})
 
 # %%

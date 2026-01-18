@@ -111,10 +111,9 @@ g_search_space = plotly_search_space(df_filtered, top_params)
 g_search_space.update_layout(
     title="XGBoost Hyperparameter Search Space - CoverType Dataset",
     autosize=True,
-    width=1000,
+    width=None,
     height=650
 )
-# Show plot - responsive for documentation
 plotly.io.show(g_search_space, config={'responsive': True})
 
 # %%
@@ -129,10 +128,9 @@ g_logbook = plotly_logbook(opt.logbook_, population_df)
 g_logbook.update_layout(
     title="XGBoost Optimization Evolution - CoverType Dataset",
     autosize=True,
-    width=900,
+    width=None,
     height=500
 )
-# Show plot - responsive for documentation
 plotly.io.show(g_logbook, config={'responsive': True})
 
 # %%
