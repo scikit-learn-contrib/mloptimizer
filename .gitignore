@@ -349,3 +349,68 @@ dmypy.json
 *lol
 
 # End of https://www.toptal.com/developers/gitignore/api/pycharm,python,test,macos
+
+### mloptimizer specific ###
+# Experiment output directories (timestamped)
+[0-9]*_*Classifier/
+[0-9]*_*Regressor/
+
+# MLflow tracking databases
+mlflow.db
+mlflow_test.db
+mlruns/
+mloptimizer/test/mlruns/
+docs/mlruns/
+examples/mlruns/
+
+# Pickle files (saved datasets)
+*.pkl
+saved_datasets.pkl
+
+# Virtual environments
+.cvenv/
+
+# Notebooks and experiments
+notebooks/
+experiment/
+
+# Analysis and temporary markdown files
+*_SUMMARY.md
+*_GUIDE.md
+*_ANALYSIS.md
+*_FIX.md
+*_PLAN.md
+PRELIMINARY_*.md
+PAPER_REVISION_ADVICE.md
+
+# Generated documentation
+docs/auto_examples/
+docs/html/
+docs/sg_execution_times.rst
+
+# Example outputs
+examples/Evolution_example/
+examples/Optimizer/
+examples/Search_space_example/
+examples/catboost_info/
+
+# Test outputs
+mloptimizer/test/application/reporting/*.html
+mloptimizer/test/application/reporting/*.png
+mloptimizer/test/catboost_info/
+mloptimizer/test/test_genoptimizer/
+
+# Scripts and temporary files
+scripts/
+notexamples/
+review.txt
+softwx-draft.tex
+test_*.py
+verify_*.py
+demo_*.py
+dockerfile
+
+# Benchmark results
+openml_*.png
+openml_*.csv
+openml_*.tex
