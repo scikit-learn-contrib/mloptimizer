@@ -20,7 +20,6 @@ project = 'mloptimizer'
 copyright = '2024, Antonio Caparrini, Javier Arroyo'
 author = 'Antonio Caparrini, Javier Arroyo'
 release = version
-root_doc = 'readme_link'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
